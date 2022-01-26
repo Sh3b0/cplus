@@ -11,16 +11,20 @@
 #undef YY_DECL
 #define YY_DECL cplus::parser::symbol_type cplus::lexer::get_next_token()
 
-#include "parser.tab.hpp"
+#include "parser.hpp"
 #include <fstream>
 
 namespace cplus {
-        
+    class shell; 
+    
     class lexer : public yyFlexLexer {
     public:
-        lexer() { }
+        lexer(shell& driver) : m_driver(driver) { }
         virtual ~lexer() {}
         virtual cplus::parser::symbol_type get_next_token();
+        
+    private:
+        shell &m_driver;
     };
 
 }
