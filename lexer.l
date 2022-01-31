@@ -1,4 +1,5 @@
 %option noyywrap
+%option nounistd
 %option c++
 %option yyclass="lexer"
 %option prefix="cplus_"
