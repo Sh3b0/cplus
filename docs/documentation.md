@@ -96,7 +96,7 @@ Operators:
 
 Example:
 ```
-x is 5 + 5  # 10
+var x is 5 + 5  # 10
 ```
 ### Relational:
 Operators: 
@@ -109,16 +109,16 @@ Operators:
 
 Examples:
 ```
-y is 3 > 1  # true
-z is 4 = 5  # false
+var y is 3 > 1  # true
+var z is 4 = 5  # false
 ```
 ### Brackets:
 Operators: __(__ , __)__
 
 Example:
 ```
-x is 1-4+5      # 2
-y is 1-(4+5)    # -8
+var x is 1-4+5      # 2
+var y is 1-(4+5)    # -8
 ```
 
 ### Assignment:
@@ -142,6 +142,9 @@ __if__ expression __then__ body  __end__
 
 __if__ expression __then__ body  __else__ body __end__
 
+Runs the "body" if the "expression" can be evalutated to true. [see assignment table for more info.](#Assignment)
+
+
 Examples:
 ```
 if x < 0
@@ -160,7 +163,123 @@ else
 end
 ```
 
-## Comments
+## Loops
+***
+### While loop:
+__while__ expression __loop__ body __end__
+
+Keeps running the "body" as long as the "expression" can be evalutated to true. [see assignment table for more info.](#Assignment)
+
+Example:
+```
+var x is 10
+
+while x > 0
+loop
+    x := x-1
+end
+
+# x will be decrease until it is equal to 0 where the while loop will exit
+```
+### For loop:
+__for__ identifier __in__ expression1 __..__ expression2 __loop__ body __end__
+
+__for__ identifier __in__ __reverse__ expression1 __..__ expression2 __loop__ body __end__
+
+Keeps running the "body" as long as the "identifier" is between the "expression1" and "expression2".\
+"identifier" initial value is set to the "expression1" or "expression2" if __reverse__ keyword is used.\
+After each iteration "identifier" gets increased by 1 or decreased by 1 if __reverse__ keyword is used.
+
+Examples:
+```
+# Normal for loop
+
+var x is 0
+
+for i in 0 .. 4
+loop
+    x := x + i
+end
+
+# Values of i and x went as follows:
+# i     x
+# 0     0
+# 1     1
+# 2     3
+# 3     6
+# 4     10
+```
+```
+# For loop with reverse
+var x is 0
+
+for i in reverse 0 .. 4
+loop
+    x := x + i
+end
+
+# Values of i and x went as follows:
+# i     x
+# 4     4
+# 3     7
+# 2     9
+# 1     10
+# 0     10
+```
+
+## Routines
+***
+__routine__ indentifier __(__ __)__ __is__ body __end__
+
+__routine__ indentifier __(__ "Parameters declerations in the form Identifier : Type seprated by __,__" __)__ __is__ body __end__
+
+__routine__ indentifier __(__ __)__ __:__ Type __is__ body __end__
+
+If the type after the parameters section is specified then the function returns a value; therefore, its call can present in expressions. In that case, the value to be returned by the routine should specified in the routine body by the __return__ keyword.
+
+Example:
+```
+routine power (a : integer , b : integer) : integer
+is
+    var result is 1
+
+    for i in 0 .. (b-1)
+    loop
+        result := result * a
+    end
+
+    return result
+end
+
+var y is power(2, 4)    # value of y is 16
+```
+
+
+## Printing (*experimental*)
+***
+__print__ expression
+
+prints "expression" in the console
+
+Example:
+
+Code:
+```
+print true
+
+var y is 5
+print y
+
+print y * 10
+```
+Console:
+```
+true
+5
+50
+```
+
+## Comments (*experimental*)
 ***
 You can use the '#' to mark the rest of a line as a comment
 
