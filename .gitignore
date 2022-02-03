@@ -1,2 +1,9 @@
 .vscode
 .idea
+
+Build
+
+lexer.cpp
+parser.hpp
+parser.cpp
+stack.hh
