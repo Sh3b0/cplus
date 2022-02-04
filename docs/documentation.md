@@ -27,7 +27,7 @@ The following rules are used in sections presenting language syntax:
 
 - **Bold** text indicates a language literal (keyword or operator).
 
-- <u>Underlined</u> text can be safely replaced with an equivalent syntax defined somewhere else in the document.
+- <ins>Underlined</ins> text can be safely replaced with an equivalent syntax defined somewhere else in the document.
 
 - *Italic* text between is just for explanation and is not part of the syntax.
 
@@ -42,17 +42,17 @@ The following rules are used in sections presenting language syntax:
 
 **Syntax:**
 
-- **var** <u>Identifier</u> : <u>Type</u> **is** <u>Expression</u>;
+- **var** <ins>Identifier</ins> : <ins>Type</ins> **is** <ins>Expression</ins>;
 
-- **var** <u>Identifier</u> : <u>Type</u>;
+- **var** <ins>Identifier</ins> : <ins>Type</ins>;
 
-- **var** <u>Identifier</u> **is** <u>Expression</u>;
+- **var** <ins>Identifier</ins> **is** <ins>Expression</ins>;
 
 **Semantics:**
 
-- A place in memory is reserved for a variable of <u>Type</u> identified by <u>Identifier</u> and assigned an initial value of <u>Expression</u>
-- <u>Identifier</u> is a string of capital or small English letters, digits, or the underscore (_), it cannot start with a digit.
-- <u>Expression</u> and <u>Type</u> are discussed in the corresponding section of the document.
+- A place in memory is reserved for a variable of <ins>Type</ins> identified by <ins>Identifier</ins> and assigned an initial value of <ins>Expression</ins>
+- <ins>Identifier</ins> is a string of capital or small English letters, digits, or the underscore (_), it cannot start with a digit.
+- <ins>Expression</ins> and <ins>Type</ins> are discussed in the corresponding section of the document.
 - If the initial value is specified in the declaration then the type can be omitted. In such a
   case, the type can be unambiguously deduced (“inferred”) from the expression that
   specifies the initial value.
@@ -80,17 +80,17 @@ var z is 0.5;    # z becomes real automatically
 
 **Syntax:**
 
-- **type** <u>Identifier</u> **is** <u>Type</u>;
+- **type** <ins>Identifier</ins> **is** <ins>Type</ins>;
 
-- <u>Type</u>:
+- <ins>Type</ins>:
 
   - **integer**
   - **real**
   - **boolean**
   - **record** **{** *Variable declarations separated by a semicolon* **}** **end**
 
-  - **array** <u>Type</u>
-  - **array** **[** <u>Expression</u> **]** <u>Type</u>
+  - **array** <ins>Type</ins>
+  - **array** **[** <ins>Expression</ins> **]** <ins>Type</ins>
     - *Expression should be reducible to an integer literal representing array size*
 
 **Examples:**
@@ -173,11 +173,11 @@ var y is 1-(4+5);    # -8
 
 **Syntax:**
 
-- <u>ModifiablePrimary</u> **:=** <u>Expression</u>
-- <u>ModifiablePrimary</u>
-  - <u>Identifier</u>									   *variable name*
-  - <u>Identifier</u> **.** <u>Identifier</u>                   *record member access*
-  - <u>Identifier</u> [ <u>Expression</u> ]             *array element access* 
+- <ins>ModifiablePrimary</ins> **:=** <ins>Expression</ins>
+- <ins>ModifiablePrimary</ins>
+  - <ins>Identifier</ins>									   *variable name*
+  - <ins>Identifier</ins> **.** <ins>Identifier</ins>                   *record member access*
+  - <ins>Identifier</ins> [ <ins>Expression</ins> ]             *array element access* 
 
 **Example:**
 
@@ -196,13 +196,13 @@ Note: assignments follow them following assignment table
 
 **Syntax:**
 
-- **if** <u>Expression</u> **then** <u>Body</u>  **end**
+- **if** <ins>Expression</ins> **then** <ins>Body</ins>  **end**
 
-- **if** <u>Expression</u> **then** <u>Body</u>  **else** <u>Body</u> **end**
+- **if** <ins>Expression</ins> **then** <ins>Body</ins>  **else** <ins>Body</ins> **end**
 
 **Semantics:**
 
-- Executes <u>Body</u> if <u>Expression</u> evaluates to true. [see assignment table for more info.](#Assignment)
+- Executes <ins>Body</ins> if <ins>Expression</ins> evaluates to true. [see assignment table for more info.](#Assignment)
 
 **Examples:**
 
@@ -228,11 +228,11 @@ end
 ### While loop:
 **Syntax:**
 
-- **while** <u>Expression</u> **loop** <u>Body</u> **end**
+- **while** <ins>Expression</ins> **loop** <ins>Body</ins> **end**
 
 **Semantics:**
 
-- Keeps executing <u>Body</u> until <u>Expression</u> evaluate to false. [see assignment table for more info.](#Assignment)
+- Keeps executing <ins>Body</ins> until <ins>Expression</ins> evaluate to false. [see assignment table for more info.](#Assignment)
 
 **Examples:**
 
@@ -248,18 +248,18 @@ end
 ### For loop:
 **Syntax:**
 
-- **for** <u>Identifier</u> **in** <u>Expression</u> **..** <u>Expression</u> **loop** <u>Body</u> **end**
+- **for** <ins>Identifier</ins> **in** <ins>Expression</ins> **..** <ins>Expression</ins> **loop** <ins>Body</ins> **end**
 
-- **for** <u>Identifier</u> **in** **reverse** <u>Expression</u> **..** <u>Expression</u> **loop** body **end**
+- **for** <ins>Identifier</ins> **in** **reverse** <ins>Expression</ins> **..** <ins>Expression</ins> **loop** body **end**
 
 **Semantics:**
 
-- Creates a variable of type inferred from <u>Expression</u> and identified by <u>Identifier</u>
-- Initial value for variable is set to the first <u>Expression</u> (default)
-- Keeps running <u>Body</u> as long as the variable is between the two <u>Expression</u>s
+- Creates a variable of type inferred from <ins>Expression</ins> and identified by <ins>Identifier</ins>
+- Initial value for variable is set to the first <ins>Expression</ins> (default)
+- Keeps running <ins>Body</ins> as long as the variable is between the two <ins>Expression</ins>s
 - After each iteration, the variable gets incremented by 1 (default)
 - If **reverse** keyword is used:
-  - Initial value of the variable is set to the second <u>Expression</u>
+  - Initial value of the variable is set to the second <ins>Expression</ins>
   - The variable is decremented by 1 after each iteration.
 
 **Examples:**
@@ -304,12 +304,12 @@ end
 
 **Syntax:**
 
-- **routine** <u>Identifier</u> **(** **)** **is** <u>Body</u> **end**
+- **routine** <ins>Identifier</ins> **(** **)** **is** <ins>Body</ins> **end**
 
-- **routine** <u>Identifier</u> **(** *parameter decelerations* **)** **is** <u>Body</u> **end**
-  - *Parameter declarations have the form* <u>Identifier</u> : <u>Type</u> *and are separated by a comma*
+- **routine** <ins>Identifier</ins> **(** *parameter decelerations* **)** **is** <ins>Body</ins> **end**
+  - *Parameter declarations have the form* <ins>Identifier</ins> : <ins>Type</ins> *and are separated by a comma*
 
-- **routine** <u>Identifier</u> **(** **)** **:** <u>Type</u> **is** <u>Body</u> **end**
+- **routine** <ins>Identifier</ins> **(** **)** **:** <ins>Type</ins> **is** <ins>Body</ins> **end**
 
 **Semantics:**
 
@@ -338,7 +338,7 @@ The print keyword is used to simplify an expression and prints it to `stdout`.
 
 **Syntax:**
 
-- **print** <u>Expression</u>
+- **print** <ins>Expression</ins>
 
 **Example:**
 
