@@ -10,6 +10,7 @@ namespace cplus {
         shell();
         int parse();
         void readFrom(std::istream *is);
+        void prompt();
         friend class parser;
         friend class lexer;
         int interactive = true;

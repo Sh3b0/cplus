@@ -13,11 +13,9 @@
 digit      [0-9]
 alpha      [a-zA-Z_]
 alphanum   [a-zA-Z_0-9]
-comment    "//"[^\n]*"\n"
-string     \"[^\"]*\"
 
 %%
-comment                     /* ignore comments */
+"#"[^\n]*"\n"               /* ignore comments */
 [ \t\n]                     /* ignore whitespaces */
 "var"                       { std::cout << "[LEXER]: VAR\n";
                                 return cplus::parser::make_VAR(); }
@@ -31,19 +29,20 @@ comment                     /* ignore comments */
                                 return cplus::parser::make_REAL_KW(); }
 "boolean"                   { std::cout << "[LEXER]: BOOLEAN_KW\n";
                                 return cplus::parser::make_BOOLEAN_KW(); }
-"is"                        { std::cout << "[LEXER]: IS\n";
-                                return cplus::parser::make_IS(); }
-                                
-true|false                  { std::cout << "[LEXER]: BOOLEAN_VAL\n";
-                                return cplus::parser::make_BOOLEAN_VAL(); }
+";"                         { std::cout << "[LEXER]: SEMICOLON\n";
+                                return cplus::parser::make_SEMICOLON(); }
+":"                         { std::cout << "[LEXER]: COLON\n";
+                                return cplus::parser::make_COLON(); }
+true                        { std::cout << "[LEXER]: BOOLEAN_VAL\n";
+                                return cplus::parser::make_BOOLEAN_VAL(true); }
+false                        { std::cout << "[LEXER]: BOOLEAN_VAL\n";
+                                return cplus::parser::make_BOOLEAN_VAL(false); }
 {alpha}{alphanum}*          { std::cout << "[LEXER]: IDENTIFIER\n";
                                 return cplus::parser::make_ID(yytext); }
 {digit}+\.{digit}+ 	        { std::cout << "[LEXER]: REAL_VAL\n";
-                                return cplus::parser::make_REAL_VAL(); }
+                                return cplus::parser::make_REAL_VAL(atof(yytext)); }
 {digit}+		            { std::cout << "[LEXER]: INT_VAL\n";
-                                return cplus::parser::make_INT_VAL(); }
-";"                         { std::cout << "[LEXER]: SEMICOLON\n";
-                                return cplus::parser::make_SEMICOLON(); }
+                                return cplus::parser::make_INT_VAL(atoi(yytext)); }
 .                           { std::cout << "[LEXER]: Unknown token: " << yytext << '\n'; }
 <<EOF>>                     { return 0; }
 %%

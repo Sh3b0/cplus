@@ -14,12 +14,16 @@
 %parse-param { cplus::lexer &lexer }
 %parse-param { cplus::shell &driver }
 
-%token VAR ID IS INT_VAL REAL_VAL BOOLEAN_VAL SEMICOLON
+%token VAR ID IS INT_VAL REAL_VAL BOOLEAN_VAL
 %token TYPE INT_KW REAL_KW BOOLEAN_KW
+%token COLON SEMICOLON
 
 %type <std::string> ID
 %type <std::string> Type
 %type <std::string> PrimitiveType
+%type <int> INT_VAL
+%type <double> REAL_VAL
+%type <bool> BOOLEAN_VAL
 
 %start Program
 
@@ -60,14 +64,15 @@ Program: %empty { std::cout << "[PARSER]: EOF\n"; }
 Separator:  SEMICOLON | %empty
 ;
 
-SimpleDeclaration: VariableDeclaration { if(driver.interactive) std::cout << "cplus> "; }
-                    | TypeDeclaration { if(driver.interactive) std::cout << "cplus> "; }
+SimpleDeclaration: VariableDeclaration { driver.prompt(); }
+                    | TypeDeclaration { driver.prompt(); }
 ;
 
 VariableDeclaration:
-    VAR ID IS INT_VAL SEMICOLON { std::cout << "[PARSER]: integer variable " << $2 << "\n"; }
-    | VAR ID IS REAL_VAL SEMICOLON { std::cout << "[PARSER]: real variable " << $2 << "\n"; }
-    | VAR ID IS BOOLEAN_VAL SEMICOLON { std::cout << "[PARSER]: boolean variable " << $2 << "\n"; }
+    VAR ID IS INT_VAL SEMICOLON { std::cout << "[PARSER]: int " << $2 << " = " << $4 << "\n"; }
+    | VAR ID IS REAL_VAL SEMICOLON { std::cout << "[PARSER]: real " << $2 << " = " << $4 << "\n"; }
+    | VAR ID IS BOOLEAN_VAL SEMICOLON { std::cout << "[PARSER]: boolean " << $2 << " = " << $4 << "\n"; }
+    | VAR ID COLON Type SEMICOLON { std::cout << "[PARSER]: " << $4 << " " << $2 << "\n"; }
 ;
 
 TypeDeclaration : TYPE ID IS Type SEMICOLON { std::cout << "[PARSER]: alias " << $2 << " for type " << $4 << "\n"; }

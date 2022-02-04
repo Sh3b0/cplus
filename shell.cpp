@@ -9,6 +9,10 @@ int shell::parse() {
     return p.parse();
 }
 
+void shell::prompt() {
+    if((*this).interactive) {std:: cout << "cplus> ";}
+}
+
 void shell::readFrom(std::istream *is) {
     l.switch_streams(is, NULL);  
 }
