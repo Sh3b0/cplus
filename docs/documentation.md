@@ -109,7 +109,7 @@ p.y := 2;
 ````
 
 ```
-var numbers : array [3] integer;
+var numbers : array[3] integer;
 
 numbers[1] := 5;      # sets the first element of the array
 var y is numbers[5];  # gets the last element of the array

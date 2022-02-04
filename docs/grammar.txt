@@ -14,7 +14,8 @@ Program : { SimpleDeclaration | RoutineDeclaration }
                 PrimitiveType : integer | real | boolean
                 UserType : ArrayType | RecordType
                     ArrayType : array '[' [ Expression ] ']' Type
-                    RecordType : record { VariableDeclaration } end
+                    RecordType : record { VariableDeclarations } end
+                        VariableDeclarations : | VariableDeclaration ; VariableDeclarations
 
     RoutineDeclaration : routine Identifier ( Parameters ) [ : Type ] is Body end
         Body : { SimpleDeclaration | Statement }
