@@ -29,7 +29,7 @@ The following rules are used in sections presenting language syntax:
 
 - <ins>Underlined</ins> text can be safely replaced with an equivalent syntax defined somewhere else in the document.
 
-- *Italic* text between is just for explanation and is not part of the syntax.
+- *Italic* text is just for explanation and is not part of the syntax.
 
   
 
