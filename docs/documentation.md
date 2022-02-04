@@ -1,204 +1,276 @@
 # C+ Documentation
+
+## Table of Contents
+
+- [Documentation Guide](#Documentation-Guide)
+- [Variables](#Variables)
+  - [Primitive types](#Primitive-types)
+  - [Compound types](#Compound-types)
+- [Expressions](#Expressions)
+  - [Arithmetic](#Arithmetic)
+  - [Relational](#Relational)
+  - [Brackets](#Brackets)
+  - [Assignment](#Assignment)
+- [Conditionals](#Conditionals)
+- [Loops](#Loops)
+  - [While loop](#While-loop)
+  - [For loop](#For-loop)
+- [Routines](#Routines)
+- [Output](#Output)
+- [Comments](#Comments)
+
+
+
+## Documentation Guide
+
+The following rules are used in sections presenting language syntax:
+
+- **Bold** text indicates a language literal (keyword or operator).
+
+- <u>Underlined</u> text can be safely replaced with an equivalent syntax defined somewhere else in the document.
+
+- *Italic* text between is just for explanation and is not part of the syntax.
+
+  
+
 ## Variables
-***
-### Basic types:
-Types:
-- integer : Supports integer numbers from -2,147,483,648 to 2,147,483,647 (4 bytes)
-- real : Supports real values that fit in 8 bytes
-- boolean : Only has 2 values true or false (1 byte)
 
-Declaration:
+### Primitive types:
+- **integer** : Supports integer numbers from -2,147,483,648 to 2,147,483,647 (4 bytes)
+- **real** : Supports real values that fit in 8 bytes
+- **boolean** : Only has 2 values true or false (1 byte)
 
-__var__ identifier : Type __is__ expression
+**Syntax:**
 
-__var__ identifier : Type
+- **var** <u>Identifier</u> : <u>Type</u> **is** <u>Expression</u>;
 
-__var__ identifier __is__ expression
+- **var** <u>Identifier</u> : <u>Type</u>;
 
-If the initial value is specified in the declaration then the type can be omitted. In such a
-case, the type can be unambiguously deduced (“inferred”) from the expression that
-specifies the initial value.
+- **var** <u>Identifier</u> **is** <u>Expression</u>;
 
-Examples:
+**Semantics:**
+
+- A place in memory is reserved for a variable of <u>Type</u> identified by <u>Identifier</u> and assigned an initial value of <u>Expression</u>
+- <u>Identifier</u> is a string of capital or small English letters, digits, or the underscore (_), it cannot start with a digit.
+- <u>Expression</u> and <u>Type</u> are discussed in the corresponding section of the document.
+- If the initial value is specified in the declaration then the type can be omitted. In such a
+  case, the type can be unambiguously deduced (“inferred”) from the expression that
+  specifies the initial value.
+
+**Examples:**
 
 ```
-var a : integer is 20
-
-var b : boolean is false
-
-var c : real is 1.5
-
-var d : integer
-
-var x is 5      # x becomes integer automatically
-
-var y is true   # y becomes boolean automatically
-
-var z is 0.5    # z becomes real automatically
+var a : integer is 20;
+var b : boolean is false;
+var c : real is 1.5;
+var d : integer;
+var x is 5;      # x becomes integer automatically
+var y is true;   # y becomes boolean automatically
+var z is 0.5;    # z becomes real automatically
 ```
 
-### Compound types:
-Types:
-- Array : Array type is for grouping variables (“array elements”) of the same type together.
-- Record : Record type is for grouping logically related variables into a single construct.
+### Compound Types:
 
-Declaration:
+**type** keyword allows the declaration of compound data types, as well as aliases for already existing primitive data types. After a type declaration, the identifier following the keyword **type** is considered as a synonym for the type specified after the is keyword. The name introduced by such a declaration can be used everywhere in its scope.
 
-__record__ identifier __{__ "Variable declarations seperated by __,__ " __}__
+**Compound Types:**
 
-__array__ identifier Type
+- Array: for grouping variables (“array elements”) of the same type together.
+- Record: for grouping logically related variables into a single construct.
 
-__array__ identifier __[__ array size __]__ Type
+**Syntax:**
 
+- **type** <u>Identifier</u> **is** <u>Type</u>;
 
-Examples:
+- <u>Type</u>:
 
-``` 
-record rectangle 
-    {
-        var width : integer, 
-        var height is 5,
-        var square : boolean is false
-    }
+  - **integer**
+  - **real**
+  - **boolean**
+  - **record** **{** *Variable declarations separated by a semicolon* **}** **end**
 
-rectangle.width := 4         # sets the value of "width" in rectangle
-var x is rectangle.height   # gets the value of "height" in rectangle
+  - **array** <u>Type</u>
+  - **array** **[** <u>Expression</u> **]** <u>Type</u>
+    - *Expression should be reducible to an integer literal representing array size*
+
+**Examples:**
+
 ```
+type int is integer;  # int and integer can now be used interchangably
+var x : int is 5;
 ```
-array numbers [5] integer
 
-numbers[1] := 5      # sets the first element of the array
-var y is numbers[5] # gets the last element of the array
+````
+type Point2D is record {var x : integer; var y : integer} end;
+
+var p : Point2D;
+p.x := 1;
+p.y := 2;
+````
+
 ```
-Notes:
+var numbers : array [3] integer;
+
+numbers[1] := 5;      # sets the first element of the array
+var y is numbers[5];  # gets the last element of the array
+```
+**Notes:**
+
 - Arrays in C+ are 1-indexed (First element is at index 1)
+
 - Array size can be omitted in the array type declaration. Sizeless declaration can be
-used only for specifying subroutine parameters.
+  used only for specifying subroutine parameters.
 
-### Custom types:
-A short equivalent (“name”) for some type. After such a type
-declaration, the identifier following the keyword type is considered as a synonym for the type specified after the is keyword. The name introduced by such a declaration can be used everywhere in its scope.
-
-Declaration:
-
-__type__ identifier __is__ Type
-
-*Warning: usage isn't very clear yet.*
+  
 
 ## Expressions
-***
 ### Arithmetic:
-Operators:
-- __+__ : Addition
-- __-__ : Subtraction
-- __*__ : Multiplication
-- __/__ : Division
+**Operators:**
 
-Example:
+- **+** : Addition
+- **-** : Subtraction
+- ***** : Multiplication
+- **/** : Division
+
+**Example:**
+
 ```
-var x is 5 + 5  # 10
+var x is 5 + 5;  # 10
 ```
 ### Relational:
-Operators: 
-- __<__ : Smaller than
-- __<=__ : Smaller than or equal
-- __>__ : Bigger than
-- __>=__ : Bigger than or equal 
-- __=__ : Equals
-- __/=__ : Not equal
+**Operators:** 
 
-Examples:
+- **<** : Smaller than
+- **<=** : Smaller than or equal
+- **>** : Bigger than
+- **>=** : Bigger than or equal 
+- **=** : Equals
+- **/=** : Not equal
+
+**Examples:**
+
 ```
-var y is 3 > 1  # true
-var z is 4 = 5  # false
+var y is 3 > 1;  # true
+var z is 4 = 5;  # false
 ```
 ### Brackets:
-Operators: __(__ , __)__
+**Operators:**
 
-Example:
+- **(**
+- **)**
+
+**Example:**
+
 ```
-var x is 1-4+5      # 2
-var y is 1-(4+5)    # -8
+var x is 1-4+5;      # 2
+var y is 1-(4+5);    # -8
 ```
 
 ### Assignment:
-Operator: __:=__
+**Operators:**
 
-ModifiablePrimary __:=__ Expression
+- **:=**
 
-Example:
+**Syntax:**
+
+- <u>ModifiablePrimary</u> **:=** <u>Expression</u>
+- <u>ModifiablePrimary</u>
+  - <u>Identifier</u>									   *variable name*
+  - <u>Identifier</u> **.** <u>Identifier</u>                   *record member access*
+  - <u>Identifier</u> [ <u>Expression</u> ]             *array element access* 
+
+**Example:**
+
 ```
-var x : integer
-x := 5
+var x : integer;
+x := 5;
 ```
 
-Note: assignments follow them following assinment table
+Note: assignments follow them following assignment table
 
-![Assingment table!](Assignment_table.png "Assingment table")
+![Assingment table](Assignment_table.png)
+
+
 
 ## Conditionals
-***
-__if__ expression __then__ body  __end__
 
-__if__ expression __then__ body  __else__ body __end__
+**Syntax:**
 
-Runs the "body" if the "expression" can be evalutated to true. [see assignment table for more info.](#Assignment)
+- **if** <u>Expression</u> **then** <u>Body</u>  **end**
 
+- **if** <u>Expression</u> **then** <u>Body</u>  **else** <u>Body</u> **end**
 
-Examples:
+**Semantics:**
+
+- Executes <u>Body</u> if <u>Expression</u> evaluates to true. [see assignment table for more info.](#Assignment)
+
+**Examples:**
+
 ```
-if x < 0
-then 
-    x := x * -1
+if x < 0 then 
+    x := x * -1;
 end
 ```
 ```
-var isNegative : boolean
+var isNegative : boolean;
 
-if x < 0
-then
-    isNegative := true
+if x < 0 then
+    isNegative := true;
 else
-    isNegative := false
+    isNegative := false;
 end
 ```
+
+
 
 ## Loops
-***
+
 ### While loop:
-__while__ expression __loop__ body __end__
+**Syntax:**
 
-Keeps running the "body" as long as the "expression" can be evalutated to true. [see assignment table for more info.](#Assignment)
+- **while** <u>Expression</u> **loop** <u>Body</u> **end**
 
-Example:
+**Semantics:**
+
+- Keeps executing <u>Body</u> until <u>Expression</u> evaluate to false. [see assignment table for more info.](#Assignment)
+
+**Examples:**
+
 ```
-var x is 10
+var x is 10;
 
-while x > 0
-loop
-    x := x-1
+while x > 0 loop
+    x := x-1;
 end
 
-# x will be decrease until it is equal to 0 where the while loop will exit
+# x will decrease until it is equal to 0 where the while loop will exit
 ```
 ### For loop:
-__for__ identifier __in__ expression1 __..__ expression2 __loop__ body __end__
+**Syntax:**
 
-__for__ identifier __in__ __reverse__ expression1 __..__ expression2 __loop__ body __end__
+- **for** <u>Identifier</u> **in** <u>Expression</u> **..** <u>Expression</u> **loop** <u>Body</u> **end**
 
-Keeps running the "body" as long as the "identifier" is between the "expression1" and "expression2".\
-"identifier" initial value is set to the "expression1" or "expression2" if __reverse__ keyword is used.\
-After each iteration "identifier" gets increased by 1 or decreased by 1 if __reverse__ keyword is used.
+- **for** <u>Identifier</u> **in** **reverse** <u>Expression</u> **..** <u>Expression</u> **loop** body **end**
 
-Examples:
+**Semantics:**
+
+- Creates a variable of type inferred from <u>Expression</u> and identified by <u>Identifier</u>
+- Initial value for variable is set to the first <u>Expression</u> (default)
+- Keeps running <u>Body</u> as long as the variable is between the two <u>Expression</u>s
+- After each iteration, the variable gets incremented by 1 (default)
+- If **reverse** keyword is used:
+  - Initial value of the variable is set to the second <u>Expression</u>
+  - The variable is decremented by 1 after each iteration.
+
+**Examples:**
+
 ```
 # Normal for loop
 
-var x is 0
+var x is 0;
 
-for i in 0 .. 4
-loop
-    x := x + i
+for i in 0 .. 4 loop
+    x := x + i;
 end
 
 # Values of i and x went as follows:
@@ -211,11 +283,10 @@ end
 ```
 ```
 # For loop with reverse
-var x is 0
+var x is 0;
 
-for i in reverse 0 .. 4
-loop
-    x := x + i
+for i in reverse 0 .. 4 loop
+    x := x + i;
 end
 
 # Values of i and x went as follows:
@@ -227,65 +298,78 @@ end
 # 0     10
 ```
 
+
+
 ## Routines
-***
-__routine__ indentifier __(__ __)__ __is__ body __end__
 
-__routine__ indentifier __(__ "Parameters declerations in the form Identifier : Type seprated by __,__" __)__ __is__ body __end__
+**Syntax:**
 
-__routine__ indentifier __(__ __)__ __:__ Type __is__ body __end__
+- **routine** <u>Identifier</u> **(** **)** **is** <u>Body</u> **end**
 
-If the type after the parameters section is specified then the function returns a value; therefore, its call can present in expressions. In that case, the value to be returned by the routine should specified in the routine body by the __return__ keyword.
+- **routine** <u>Identifier</u> **(** *parameter decelerations* **)** **is** <u>Body</u> **end**
+  - *Parameter declarations have the form* <u>Identifier</u> : <u>Type</u> *and are separated by a comma*
 
-Example:
+- **routine** <u>Identifier</u> **(** **)** **:** <u>Type</u> **is** <u>Body</u> **end**
+
+**Semantics:**
+
+- If the type after the parameters section is specified then the function returns a value; therefore, its call can present in expressions. In that case, the value to be returned by the routine should specified in the routine body by the **return** keyword.
+
+**Example:**
+
 ```
-routine power (a : integer , b : integer) : integer
-is
-    var result is 1
-
-    for i in 0 .. (b-1)
-    loop
-        result := result * a
+routine power (a : integer , b : integer) : integer is
+    var result is 1;
+    for i in 0 .. (b-1) loop
+        result := result * a;
     end
-
-    return result
+    
+    return result;
 end
 
-var y is power(2, 4)    # value of y is 16
+var y is power(2, 4);    # value of y is 16
 ```
 
 
-## Printing (*experimental*)
-***
-__print__ expression
 
-prints "expression" in the console
+## Output
 
-Example:
+The print keyword is used to simplify an expression and prints it to `stdout`.
 
-Code:
+**Syntax:**
+
+- **print** <u>Expression</u>
+
+**Example:**
+
+**Code:**
+
 ```
-print true
+print true;
 
-var y is 5
-print y
+var y is 5;
+print y;
 
-print y * 10
+print y * 10;
 ```
-Console:
+**Console:**
+
 ```
 true
 5
 50
 ```
 
-## Comments (*experimental*)
-***
-You can use the '#' to mark the rest of a line as a comment
 
-Example:
+
+## Comments
+
+You can use the '#' to mark the rest of a line as a comment.
+
+**Examples:**
+
 ```
 # This is a comment
+var x : integer; # This is also a comment 
 ```
-
 
