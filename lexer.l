@@ -23,14 +23,25 @@ comment                     /* ignore comments */
                                 return cplus::parser::make_VAR(); }
 "is"                        { std::cout << "[LEXER]: IS\n";
                                 return cplus::parser::make_IS(); }
+"type"                      { std::cout << "[LEXER]: TYPE\n";
+                                return cplus::parser::make_TYPE(); }
+"integer"                   { std::cout << "[LEXER]: INT_KW\n";
+                                return cplus::parser::make_INT_KW(); }
+"real"                      { std::cout << "[LEXER]: REAL_KW\n";
+                                return cplus::parser::make_REAL_KW(); }
+"boolean"                   { std::cout << "[LEXER]: BOOLEAN_KW\n";
+                                return cplus::parser::make_BOOLEAN_KW(); }
+"is"                        { std::cout << "[LEXER]: IS\n";
+                                return cplus::parser::make_IS(); }
+                                
 true|false                  { std::cout << "[LEXER]: BOOLEAN_VAL\n";
-                                return cplus::parser::make_BOOLEAN(); }
+                                return cplus::parser::make_BOOLEAN_VAL(); }
 {alpha}{alphanum}*          { std::cout << "[LEXER]: IDENTIFIER\n";
                                 return cplus::parser::make_ID(yytext); }
 {digit}+\.{digit}+ 	        { std::cout << "[LEXER]: REAL_VAL\n";
-                                return cplus::parser::make_REAL(); }
+                                return cplus::parser::make_REAL_VAL(); }
 {digit}+		            { std::cout << "[LEXER]: INT_VAL\n";
-                                return cplus::parser::make_INT(); }
+                                return cplus::parser::make_INT_VAL(); }
 ";"                         { std::cout << "[LEXER]: SEMICOLON\n";
                                 return cplus::parser::make_SEMICOLON(); }
 .                           { std::cout << "[LEXER]: Unknown token: " << yytext << '\n'; }

@@ -9,4 +9,4 @@ debug:
 	g++ -g main.cpp lexer.cpp parser.cpp shell.cpp -o cplus
 
 clean:
-	rm -rf lexer.cpp parser.cpp parser.hpp stack.hh cplus parser.dot parser.output
+	rm -rf lexer.cpp parser.cpp parser.hpp cplus parser.dot parser.output
