@@ -13,10 +13,29 @@ type Point2D is record { var x : integer; var y : integer; } end;
 type Tuple3D is array[3] integer;
 var numbers : array[3] integer;
 
-print x;
-print y;
-print z;
-print id;
+routine test () : integer is
+    var result is 1;
+    
+    if 1 then 
+        a := 1;
+    end
+
+    while 1 loop
+        a := 1;
+    end
+
+    for i in 0 .. 4 loop
+        a := 1;
+    end
+
+    for i in reverse 0 .. 4 loop
+        a := 1;
+    end    
+    
+    print x;
+
+    return result;    
+end
 
 # To be supported
 # var id : integer is 5 + 5;

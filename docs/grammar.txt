@@ -8,7 +8,7 @@ Program : { SimpleDeclaration | RoutineDeclaration }
                         Factor : Summand { ( + | - ) Summand }
                             Summand : Primary | ( Expression )
                                 Primary : IntegralLiteral | RealLiteral | true | false | ModifiablePrimary
-                                    ModifiablePrimary : Identifier { . Identifier | [ Expression ] }
+                                    ModifiablePrimary : Identifier { . Identifier | '[' Expression ']' }
         TypeDeclaration : type Identifier is Type
             Type : PrimitiveType | UserType | Identifier
                 PrimitiveType : integer | real | boolean
@@ -18,12 +18,15 @@ Program : { SimpleDeclaration | RoutineDeclaration }
                         VariableDeclarations : | VariableDeclaration ; VariableDeclarations
 
     RoutineDeclaration : routine Identifier ( Parameters ) [ : Type ] is Body end
+        Parameters : ParameterDeclaration { , ParameterDeclaration }
+            ParameterDeclaration : Identifier : Identifier
+
         Body : { SimpleDeclaration | Statement }
             Statement : Assignment | RoutineCall | WhileLoop | ForLoop | ForeachLoop | IfStatement
                 Assignment : ModifiablePrimary := Expression
                 RoutineCall : Identifier [ ( Expression { , Expression } ) ]
                 WhileLoop : while Expression loop Body end
-                ForLoop : for Identifier Range loop Body end
+                ForLoop : for Identifier in [reverse] Range loop Body end
                 ForeachLoop : foreach Identifier from ModifiablePrimary loop Body end
                 IfStatement : if Expression then Body [ else Body ] end
 

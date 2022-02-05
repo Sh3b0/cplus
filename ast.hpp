@@ -20,7 +20,7 @@ namespace ast
         string type;
     };
 
-    // Program is a map of variables to their values (for now)
+    // Program is a list of variables
     struct Program : Node {
         vector<ast_node<Variable> > variables;
     };
