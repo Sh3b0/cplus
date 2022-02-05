@@ -1,6 +1,6 @@
 #include "lexer.h"
 #include "parser.hpp"
-#include "shell.h"
+#include "shell.hpp"
 
 using namespace cplus;
 using namespace std;

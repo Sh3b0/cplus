@@ -19,20 +19,22 @@
 %token B_L B_R SB_L SB_R CB_L CB_R            // ( ) [ ] { }
 %token COLON SEMICOLON COMMA                  // : ; ,
 %token ARRAY RECORD ROUTINE END               // array record routine end
+%token PRINT
 
 %type <std::string> ID Type PrimitiveType UserType ArrayType RecordType
-
 %type <int> INT_VAL
 %type <double> REAL_VAL
 %type <bool> BOOLEAN_VAL
+
+%type <ast::ast_node<ast::Variable> > VariableDeclaration
 
 %start Program
 
 %code requires
 {
-    #pragma once
     #include <iostream>
     #include <string>
+    #include "ast.hpp"
 
     using namespace std;
 
@@ -47,37 +49,86 @@
 {
     #include "lexer.h"
     #include "parser.hpp"
-    #include "shell.h"
+    #include "shell.hpp"
     static cplus::parser::symbol_type yylex(cplus::lexer &lexer, cplus::shell &driver) {
         return lexer.get_next_token();
     }
+    
     using namespace cplus;
+    using namespace ast;
+    
+    ast_node<Program> program = make_shared<Program>();  // Points to the whole program node.
 }
 
 
 %%
 
+// TODO: PRINT should belong to statement grammar
 Program: %empty { if (driver.pdebug) cout << "[PARSER]: EOF\n"; }
         | SimpleDeclaration Separator Program
+        | PRINT ID Separator Program {
+            for(auto u : program->variables) {
+                if(u->name == $2) {
+                    if(u->dtype == "integer") {
+                        cout << u->int_val << '\n';
+                    }
+                    else if(u->dtype == "real") {
+                        cout << u->real_val << '\n';
+                    }
+                    else if(u->dtype == "boolean") {
+                        cout << u->bool_val << '\n';
+                    }
+                }
+            }
+        }
 
 ;
 
 Separator:  SEMICOLON | %empty
 ;
 
-SimpleDeclaration: VariableDeclaration { driver.prompt(); }
-                    | TypeDeclaration { driver.prompt(); }
+SimpleDeclaration:
+    VariableDeclaration {
+        program->variables.push_back($1);
+        driver.prompt();
+    }
+    | TypeDeclaration { driver.prompt(); }
 ;
 
-// Explicit matching for INT_VAL, etc. may be replaced with INT_Expression, etc.
+// TODO: Explicit matching for INT_VAL, etc. may be replaced with INT_Expression, etc.
+// TODO: These rules can be reduced.
 VariableDeclaration:
-    VAR ID IS INT_VAL SEMICOLON { if (driver.pdebug) cout << "[PARSER]: int " << $2 << " = " << $4 << "\n"; }
-    | VAR ID IS REAL_VAL SEMICOLON { if (driver.pdebug) cout << "[PARSER]: real " << $2 << " = " << $4 << "\n"; }
-    | VAR ID IS BOOLEAN_VAL SEMICOLON { if (driver.pdebug) cout << "[PARSER]: boolean " << $2 << " = " << $4 << "\n"; }
-    | VAR ID COLON Type SEMICOLON { if (driver.pdebug) cout << "[PARSER]: " << $4 << " " << $2 << "\n"; }
-    | VAR ID COLON Type IS INT_VAL SEMICOLON { if (driver.pdebug) cout << "[PARSER]: " << $4 << " " << $2 << " = " << $6 << "\n"; }
-    | VAR ID COLON Type IS REAL_VAL SEMICOLON { if (driver.pdebug) cout << "[PARSER]: " << $4 << " " << $2 << " = " << $6 << "\n"; }
-    | VAR ID COLON Type IS BOOLEAN_VAL SEMICOLON { if (driver.pdebug) cout << "[PARSER]: " << $4 << " " << $2 << " = " << $6 << "\n"; }
+    VAR ID IS INT_VAL SEMICOLON {
+        if (driver.pdebug) cout << "[PARSER]: int " << $2 << " = " << $4 << "\n";
+        $$ = make_shared<Variable> ("integer", $2, $4);
+    }
+    | VAR ID IS REAL_VAL SEMICOLON {
+        if (driver.pdebug) cout << "[PARSER]: real " << $2 << " = " << $4 << "\n";
+        $$ = make_shared<Variable> ("real", $2, $4);
+    }
+    | VAR ID IS BOOLEAN_VAL SEMICOLON {
+        if (driver.pdebug) cout << "[PARSER]: boolean " << $2 << " = " << $4 << "\n";
+        $$ = make_shared<Variable> ("boolean", $2, $4);
+    }
+    | VAR ID COLON Type SEMICOLON {
+        if (driver.pdebug) cout << "[PARSER]: " << $4 << " " << $2 << "\n";
+        $$ = make_shared<Variable> ($4, $2, "null");
+    }
+    | VAR ID COLON Type IS INT_VAL SEMICOLON {
+        if (driver.pdebug) cout << "[PARSER]: " << $4 << " " << $2 << " = " << $6 << "\n";
+        // TODO: there might be a type mismatch error here.
+        $$ = make_shared<Variable> ("integer", $2, $6);
+    }
+    | VAR ID COLON Type IS REAL_VAL SEMICOLON {
+        if (driver.pdebug) cout << "[PARSER]: " << $4 << " " << $2 << " = " << $6 << "\n";
+        // TODO: there might be a type mismatch error here.
+        $$ = make_shared<Variable> ("real", $2, $6);
+    }
+    | VAR ID COLON Type IS BOOLEAN_VAL SEMICOLON {
+        if (driver.pdebug) cout << "[PARSER]: " << $4 << " " << $2 << " = " << $6 << "\n";
+        // TODO: there might be a type mismatch error here.
+        $$ = make_shared<Variable> ("boolean", $2, $6);
+    }
 ;
 
 TypeDeclaration : TYPE ID IS Type SEMICOLON { if (driver.pdebug) cout << "[PARSER]: alias " << $2 << " for type " << $4 << "\n"; }

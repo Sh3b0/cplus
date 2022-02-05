@@ -1,0 +1,17 @@
+Abstract Syntax Tree for cplus:
+===============================
+
+AST node has a type, depending on that type, the other members are defined.
+
+"Program" is an AST node, it contain the list of variables, statements, and routines of the program.
+"Variable", "Routine", "IfStatement", "ForLoop", "WhileLoop", etc. are all AST nodes with different data members.
+
+
+When the parser completely parse an AST node, it crafts such node,
+    i.e., create the object with the parsed values and returns a pointer to that object.
+
+For example, when we parse a VariableDeclaration,
+    parser should return a pointer to an AST node of type "Variable"
+    Variable node basically contain information about the variable,
+    i.e., variable identifier and type and initial value if exists.
+

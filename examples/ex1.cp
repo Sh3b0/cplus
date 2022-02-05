@@ -13,6 +13,10 @@ type Point2D is record { var x : integer; var y : integer; } end;
 type Tuple3D is array[3] integer;
 var numbers : array[3] integer;
 
+print x;
+print y;
+print z;
+print id;
 
 # To be supported
 # var id : integer is 5 + 5;
