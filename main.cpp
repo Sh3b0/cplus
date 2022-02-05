@@ -1,6 +1,3 @@
-
-#include <iostream>
-#include <fstream>
 #include "lexer.h"
 #include "parser.hpp"
 #include "shell.h"
@@ -8,15 +5,17 @@
 using namespace cplus;
 using namespace std;
 
-int main(int argc, char **argv) {
-    shell s;
+shell s;
 
-    s.interactive = false;
-    ifstream file("examples/ex1.cp");
-    s.readFrom(&file);
-
-    if (s.interactive) cout << "cplus> ";
-
-    s.parse();
+int main(int argc, char **argv)
+{
+    if (s.parse_args(argc, argv)) {
+        cout << "Error parsing arguments\n";
+        return 1;
+    }
+    if (s.parse_program()) {
+        cout << "Error parsing program\n";
+        return 1;
+    }
     return 0;
 }

@@ -57,7 +57,7 @@
 
 %%
 
-Program: %empty { std::cout << "[PARSER]: EOF\n"; }
+Program: %empty { if (driver.pdebug) cout << "[PARSER]: EOF\n"; }
         | SimpleDeclaration Separator Program
 
 ;
@@ -69,18 +69,18 @@ SimpleDeclaration: VariableDeclaration { driver.prompt(); }
                     | TypeDeclaration { driver.prompt(); }
 ;
 
-// Explicit matching for INT_VAL, REAL_VAL, BOOLEAN_VAL may be replaced with "Expression" 
+// Explicit matching for INT_VAL, etc. may be replaced with INT_Expression, etc.
 VariableDeclaration:
-    VAR ID IS INT_VAL SEMICOLON { std::cout << "[PARSER]: int " << $2 << " = " << $4 << "\n"; }
-    | VAR ID IS REAL_VAL SEMICOLON { std::cout << "[PARSER]: real " << $2 << " = " << $4 << "\n"; }
-    | VAR ID IS BOOLEAN_VAL SEMICOLON { std::cout << "[PARSER]: boolean " << $2 << " = " << $4 << "\n"; }
-    | VAR ID COLON Type SEMICOLON { std::cout << "[PARSER]: " << $4 << " " << $2 << "\n"; }
-    | VAR ID COLON Type IS INT_VAL SEMICOLON { std::cout << "[PARSER]: " << $4 << " " << $2 << " = " << $6 << "\n"; }
-    | VAR ID COLON Type IS REAL_VAL SEMICOLON { std::cout << "[PARSER]: " << $4 << " " << $2 << " = " << $6 << "\n"; }
-    | VAR ID COLON Type IS BOOLEAN_VAL SEMICOLON { std::cout << "[PARSER]: " << $4 << " " << $2 << " = " << $6 << "\n"; }
+    VAR ID IS INT_VAL SEMICOLON { if (driver.pdebug) cout << "[PARSER]: int " << $2 << " = " << $4 << "\n"; }
+    | VAR ID IS REAL_VAL SEMICOLON { if (driver.pdebug) cout << "[PARSER]: real " << $2 << " = " << $4 << "\n"; }
+    | VAR ID IS BOOLEAN_VAL SEMICOLON { if (driver.pdebug) cout << "[PARSER]: boolean " << $2 << " = " << $4 << "\n"; }
+    | VAR ID COLON Type SEMICOLON { if (driver.pdebug) cout << "[PARSER]: " << $4 << " " << $2 << "\n"; }
+    | VAR ID COLON Type IS INT_VAL SEMICOLON { if (driver.pdebug) cout << "[PARSER]: " << $4 << " " << $2 << " = " << $6 << "\n"; }
+    | VAR ID COLON Type IS REAL_VAL SEMICOLON { if (driver.pdebug) cout << "[PARSER]: " << $4 << " " << $2 << " = " << $6 << "\n"; }
+    | VAR ID COLON Type IS BOOLEAN_VAL SEMICOLON { if (driver.pdebug) cout << "[PARSER]: " << $4 << " " << $2 << " = " << $6 << "\n"; }
 ;
 
-TypeDeclaration : TYPE ID IS Type SEMICOLON { std::cout << "[PARSER]: alias " << $2 << " for type " << $4 << "\n"; }
+TypeDeclaration : TYPE ID IS Type SEMICOLON { if (driver.pdebug) cout << "[PARSER]: alias " << $2 << " for type " << $4 << "\n"; }
 ;
 
 Type : PrimitiveType | UserType | ID
@@ -94,8 +94,8 @@ PrimitiveType : INT_KW { $$ = "integer"; }
 UserType : ArrayType | RecordType
 ;
 
-// Explicit matching for INT_VAL may be replaced with "Expression"
-ArrayType : ARRAY SB_L INT_VAL SB_R Type { $$ = $5 + "[" + std::to_string($3) + "]"; }
+// Explicit matching for INT_VAL may be replaced with INT_Expression
+ArrayType : ARRAY SB_L INT_VAL SB_R Type { $$ = $5 + "[" + to_string($3) + "]"; }
 ;
 
 RecordType : RECORD CB_L VariableDeclarations CB_R END { $$ = "record"; }
