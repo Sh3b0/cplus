@@ -75,7 +75,6 @@ SemicolonSeparator : SEMICOLON | %empty
 CommaSeparator : COMMA | %empty
 ;
 
-// TODO: PRINT should belong to statement grammar
 Program:
     %empty { if (driver.pdebug) cout << "[PARSER]: EOF\n"; }
     | SimpleDeclaration SemicolonSeparator Program
@@ -108,7 +107,7 @@ VariableDeclaration:
         $$ = make_shared<Variable> ($4, $2, "null");
     }
     | VAR ID COLON Type IS Expression SEMICOLON {
-        // TODO: replace 
+        // TODO: replace <Result> with the actual expression result.
         if (driver.pdebug) cout << "[PARSER]: " << $4 << " " << $2 << " = " << "<Result>" << "\n";
         // TODO: there might be a type mismatch error here.
         $$ = make_shared<Variable> ("integer", $2, "<Result>");

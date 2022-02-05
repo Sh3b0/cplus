@@ -18,19 +18,17 @@ routine test () : integer is
     
     if 1 then 
         a := 1;
-    end
-
-    while 1 loop
-        a := 1;
-    end
-
-    for i in 0 .. 4 loop
-        a := 1;
+        while 1 loop
+            a := 1;
+        end
+        for i in 0 .. 4 loop
+            a := 1;
+        end
     end
 
     for i in reverse 0 .. 4 loop
         a := 1;
-    end    
+    end
     
     print x;
 
