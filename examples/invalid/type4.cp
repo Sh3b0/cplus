@@ -1,0 +1,1 @@
+type ints is array[5] integer;

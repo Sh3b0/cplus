@@ -1,0 +1,1 @@
+var color is record;

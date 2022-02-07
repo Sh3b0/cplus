@@ -1,0 +1,1 @@
+var numbers : array[] integer;
