@@ -9,11 +9,13 @@ FLEX_TARGET(MyScanner lexer.l  ${CMAKE_BINARY_DIR}/lexer.cpp)
 BISON_TARGET(MyParser parser.y ${CMAKE_BINARY_DIR}/parser.cpp)
 ADD_FLEX_BISON_DEPENDENCY(MyScanner MyParser)
 
-set(HEADERS "shell.hpp")
+set(HEADERS "shell.hpp" "lexer.h" "ast.hpp")
 
 set(SOURCES "main.cpp" "shell.cpp")
 
 add_executable(cplus ${HEADERS} ${SOURCES} ${BISON_MyParser_OUTPUTS} ${FLEX_MyScanner_OUTPUTS})
+
+target_compile_features(cplus PUBLIC cxx_std_17)
 
 target_include_directories(cplus PUBLIC ${FLEX_INCLUDE_DIRS} PRIVATE ${CMAKE_SOURCE_DIR} ${CMAKE_BINARY_DIR})
 
