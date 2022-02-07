@@ -7,7 +7,7 @@
 
 namespace ast
 {
-	struct Node;
+    struct Node;
     struct Program;
     struct Literal;
     struct Variable;
@@ -17,10 +17,10 @@ namespace ast
 
 namespace ast
 {
-	using namespace std;
+    using namespace std;
 
     // Pointer to an AST node.
-	template <typename T> using ast_node = shared_ptr<T>;
+    template <typename T> using ast_node = shared_ptr<T>;
 
     struct Node {
         string type;

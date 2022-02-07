@@ -91,6 +91,7 @@ Program:
     %empty { if (driver.pdebug) cout << "[PARSER]: EOF\n"; }
     | SimpleDeclaration SemicolonSeparator Program
     | RoutineDeclaration SemicolonSeparator Program
+    | PrintStatement // Just for interactive testing, should be removed later.
 ;
 
 SimpleDeclaration:
@@ -139,17 +140,17 @@ Expression :
     // TODO: Expression can also be a ModifiablePrimary (e.g., a[0] + rec.item + 4 + x).
 ;
 
-INT_EXP: INT_VAL				{ $$ = $1; }
-	  | INT_EXP PLUS INT_EXP	{ $$ = $1 + $3; }
-	  | INT_EXP MINUS INT_EXP	{ $$ = $1 - $3; }
-	  | INT_EXP MUL INT_EXP     { $$ = $1 * $3; }
+INT_EXP: INT_VAL                { $$ = $1; }
+      | INT_EXP PLUS INT_EXP    { $$ = $1 + $3; }
+      | INT_EXP MINUS INT_EXP   { $$ = $1 - $3; }
+      | INT_EXP MUL INT_EXP     { $$ = $1 * $3; }
       | INT_EXP MOD INT_EXP     { $$ = $1 % $3; }
-	  | B_L INT_EXP B_R		    { $$ = $2; }
+      | B_L INT_EXP B_R         { $$ = $2; }
 ;
 
 REAL_EXP: REAL_VAL               { $$ = $1; }
     | REAL_EXP PLUS REAL_EXP     { $$ = $1 + $3; }
-    | REAL_EXP MINUS REAL_EXP	 { $$ = $1 - $3; }
+    | REAL_EXP MINUS REAL_EXP    { $$ = $1 - $3; }
     | REAL_EXP MUL REAL_EXP      { $$ = $1 * $3; }
     | REAL_EXP DIV REAL_EXP      { $$ = $1 / $3; }
     | B_L REAL_EXP B_R           { $$ = $2; }
@@ -208,9 +209,11 @@ VariableDeclarations: %empty | VariableDeclaration SemicolonSeparator VariableDe
 RoutineDeclaration :
     ROUTINE ID B_L Parameters B_R IS Body END {
         if (driver.pdebug) cout << "[PARSER]: routine " << $2 << " is declared\n";
+        driver.prompt();
     }
     | ROUTINE ID B_L Parameters B_R COLON Type IS Body END {
         if (driver.pdebug) cout << "[PARSER]: routine " << $2 << " is declared\n";
+        driver.prompt();
     }
 ;
 
@@ -298,6 +301,7 @@ PrintStatement :
                 break;
             }
         }
+        driver.prompt();
     }
     | PRINT Expression SEMICOLON // TODO
     | PRINT RoutineCall SEMICOLON // TODO
