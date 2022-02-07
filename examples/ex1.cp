@@ -13,7 +13,7 @@ type Point2D is record { var x : integer; var y : integer; } end;
 type Tuple3D is array[3] integer;
 var numbers : array[3] integer;
 
-routine test () : integer is
+routine test (a : integer, b : integer) : integer is
     var result is 1;
     
     if 1 then 
@@ -35,6 +35,5 @@ routine test () : integer is
     return result;    
 end
 
-# To be supported
-# var id : integer is 5 + 5;
-# var id is 5 + 5;
+var id : integer is 5 + 5;
+var id is 5 + 5;

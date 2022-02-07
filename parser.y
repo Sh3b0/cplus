@@ -31,6 +31,18 @@
 %type <bool> BOOL_VAL BOOL_EXP
 
 %type <ast::ast_node<ast::Variable> > VariableDeclaration
+%type <ast::ast_node<ast::ExpressionNode> > Expression
+
+%left COMMA
+%right BECOMES
+%left OR
+%left AND
+%left EQ NEQ XOR
+%left LT LEQ GT GEQ
+%left PLUS MINUS
+%left MUL DIV MOD
+%right NOT
+%left DOT
 
 %start Program
 
@@ -90,48 +102,81 @@ SimpleDeclaration:
 ;
 
 VariableDeclaration:
-    VAR ID IS INT_EXP SEMICOLON {
-        if (driver.pdebug) cout << "[PARSER]: int " << $2 << " = " << $4 << "\n";
-        $$ = make_shared<Variable> ("integer", $2, $4);
-    }
-    | VAR ID IS REAL_EXP SEMICOLON {
-        if (driver.pdebug) cout << "[PARSER]: real " << $2 << " = " << $4 << "\n";
-        $$ = make_shared<Variable> ("real", $2, $4);
-    }
-    | VAR ID IS BOOL_EXP SEMICOLON {
-        if (driver.pdebug) cout << "[PARSER]: boolean " << $2 << " = " << $4 << "\n";
-        $$ = make_shared<Variable> ("boolean", $2, $4);
+    VAR ID IS Expression SEMICOLON {
+        auto exp = $4;
+        if (driver.pdebug) cout << "[PARSER]: " << exp->dtype << " " << $2 << " = " << exp->value << "\n";
+        $$ = make_shared<Variable> (exp->dtype, $2, make_shared<Literal>(exp->value));
     }
     | VAR ID COLON Type SEMICOLON {
         if (driver.pdebug) cout << "[PARSER]: " << $4 << " " << $2 << "\n";
-        $$ = make_shared<Variable> ($4, $2, "null");
+        $$ = make_shared<Variable> ($4, $2, make_shared<Literal>());
     }
     | VAR ID COLON Type IS Expression SEMICOLON {
-        // TODO: replace <Result> with the actual expression result.
-        if (driver.pdebug) cout << "[PARSER]: " << $4 << " " << $2 << " = " << "<Result>" << "\n";
-        // TODO: there might be a type mismatch error here.
-        $$ = make_shared<Variable> ("integer", $2, "<Result>");
+        auto exp = $6;
+        if (driver.pdebug) cout << "[PARSER]: " << exp->dtype << " " << $2 << " = " << exp->value << "\n";
+        
+        if (exp->dtype != $4) {
+            cout << "[PARSER]: Error: Type mismatch: " << exp->dtype << " cannot be unified with " << $4 << '\n';
+        }
+
+        $$ = make_shared<Variable> (exp->dtype, $2, make_shared<Literal>(exp->value));
     }
 ;
 
-// TODO: Support simplification of expressions to one of the three primitive types
-
 Expression :
-    INT_EXP
-    | REAL_EXP
-    | BOOL_EXP
+    INT_EXP {
+        if (driver.pdebug) cout << "[PARSER]: INT_EXP evaluates to " << $1 << "\n";
+        $$ = make_shared<ExpressionNode>("integer", make_shared<Literal>($1));
+    }
+    | REAL_EXP {
+        if (driver.pdebug) cout << "[PARSER]: REAL_EXP evaluates to " << $1 << "\n";
+        $$ = make_shared<ExpressionNode>("real", make_shared<Literal>($1));
+    }
+    | BOOL_EXP {
+        if (driver.pdebug) cout << "[PARSER]: BOOL_EXP evaluates to " << $1 << "\n";
+        $$ = make_shared<ExpressionNode>("boolean", make_shared<Literal>($1));
+    }
+    // TODO: Expression can also be a ModifiablePrimary (e.g., a[0] + rec.item + 4 + x).
 ;
 
-INT_EXP :
-    INT_VAL
+INT_EXP: INT_VAL				{ $$ = $1; }
+	  | INT_EXP PLUS INT_EXP	{ $$ = $1 + $3; }
+	  | INT_EXP MINUS INT_EXP	{ $$ = $1 - $3; }
+	  | INT_EXP MUL INT_EXP     { $$ = $1 * $3; }
+      | INT_EXP MOD INT_EXP     { $$ = $1 % $3; }
+	  | B_L INT_EXP B_R		    { $$ = $2; }
 ;
 
-REAL_EXP :
-    REAL_VAL
+REAL_EXP: REAL_VAL               { $$ = $1; }
+    | REAL_EXP PLUS REAL_EXP     { $$ = $1 + $3; }
+    | REAL_EXP MINUS REAL_EXP	 { $$ = $1 - $3; }
+    | REAL_EXP MUL REAL_EXP      { $$ = $1 * $3; }
+    | REAL_EXP DIV REAL_EXP      { $$ = $1 / $3; }
+    | B_L REAL_EXP B_R           { $$ = $2; }
+    | INT_EXP PLUS REAL_EXP      { $$ = $1 + $3; }
+    | INT_EXP MINUS REAL_EXP     { $$ = $1 - $3; }
+    | INT_EXP MUL REAL_EXP       { $$ = $1 * $3; }
+    | INT_EXP DIV REAL_EXP       { $$ = $1 / $3; }
+    | REAL_EXP PLUS INT_EXP      { $$ = $1 + $3; }
+    | REAL_EXP MINUS INT_EXP     { $$ = $1 - $3; }
+    | REAL_EXP MUL INT_EXP       { $$ = $1 * $3; }
+    | REAL_EXP DIV INT_EXP       { $$ = $1 / $3; }
+    | INT_EXP DIV INT_EXP        { $$ = $1 / (double)$3; }
 ;
 
-BOOL_EXP :
-    BOOL_VAL
+BOOL_EXP : BOOL_VAL { $$ = $1; }
+    | BOOL_EXP AND BOOL_EXP  { $$ = $1 && $3; }
+    | BOOL_EXP OR BOOL_EXP   { $$ = $1 || $3; }
+    | BOOL_EXP XOR BOOL_EXP  { $$ = $1 != $3; }
+    | NOT BOOL_EXP           { $$ = !($2); }
+    | B_L BOOL_EXP B_R       { $$ = $2; }
+    | INT_EXP LT INT_EXP     { $$ = $1 < $3; }
+    | INT_EXP LEQ INT_EXP    { $$ = $1 <= $3; }
+    | INT_EXP GT INT_EXP     { $$ = $1 > $3; }
+    | INT_EXP GEQ INT_EXP    { $$ = $1 >= $3; }
+    | INT_EXP EQ INT_EXP     { $$ = ($1 == $3); }
+    | INT_EXP NEQ INT_EXP    { $$ = ($1 != $3); }
+    // TODO: add more rules for real values comparison (and hybrid).
 ;
 
 
@@ -174,7 +219,7 @@ Parameters :
 ;
 
 ParameterDeclaration :
-    ID COLON ID
+    ID COLON Type
 ;
 
 Body : %empty
@@ -249,15 +294,8 @@ PrintStatement :
         if (driver.pdebug) cout << "[PARSER]: print " << $2 << "\n";
         for(auto u : program->variables) {
             if(u->name == $2) {
-                if(u->dtype == "integer") {
-                    cout << u->int_val << '\n';
-                }
-                else if(u->dtype == "real") {
-                    cout << u->real_val << '\n';
-                }
-                else if(u->dtype == "boolean") {
-                    cout << u->bool_val << '\n';
-                }
+                cout << u->value << '\n';
+                break;
             }
         }
     }
