@@ -171,13 +171,34 @@ BOOL_EXP : BOOL_VAL { $$ = $1; }
     | BOOL_EXP XOR BOOL_EXP  { $$ = $1 != $3; }
     | NOT BOOL_EXP           { $$ = !($2); }
     | B_L BOOL_EXP B_R       { $$ = $2; }
+    // integer
     | INT_EXP LT INT_EXP     { $$ = $1 < $3; }
     | INT_EXP LEQ INT_EXP    { $$ = $1 <= $3; }
     | INT_EXP GT INT_EXP     { $$ = $1 > $3; }
     | INT_EXP GEQ INT_EXP    { $$ = $1 >= $3; }
     | INT_EXP EQ INT_EXP     { $$ = ($1 == $3); }
     | INT_EXP NEQ INT_EXP    { $$ = ($1 != $3); }
-    // TODO: add more rules for real values comparison (and hybrid).
+    // real
+    | REAL_EXP LT REAL_EXP     { $$ = $1 < $3; }
+    | REAL_EXP LEQ REAL_EXP    { $$ = $1 <= $3; }
+    | REAL_EXP GT REAL_EXP     { $$ = $1 > $3; }
+    | REAL_EXP GEQ REAL_EXP    { $$ = $1 >= $3; }
+    | REAL_EXP EQ REAL_EXP     { $$ = ($1 == $3); }
+    | REAL_EXP NEQ REAL_EXP    { $$ = ($1 != $3); }
+    // real and integer
+    | REAL_EXP LT INT_EXP     { $$ = $1 < $3; }
+    | REAL_EXP LEQ INT_EXP    { $$ = $1 <= $3; }
+    | REAL_EXP GT INT_EXP     { $$ = $1 > $3; }
+    | REAL_EXP GEQ INT_EXP    { $$ = $1 >= $3; }
+    | REAL_EXP EQ INT_EXP     { $$ = ($1 == $3); }
+    | REAL_EXP NEQ INT_EXP    { $$ = ($1 != $3); }
+    // integer and real
+    | INT_EXP LT REAL_EXP     { $$ = $1 < $3; }
+    | INT_EXP LEQ REAL_EXP    { $$ = $1 <= $3; }
+    | INT_EXP GT REAL_EXP     { $$ = $1 > $3; }
+    | INT_EXP GEQ REAL_EXP    { $$ = $1 >= $3; }
+    | INT_EXP EQ REAL_EXP     { $$ = ($1 == $3); }
+    | INT_EXP NEQ REAL_EXP    { $$ = ($1 != $3); }
 ;
 
 
