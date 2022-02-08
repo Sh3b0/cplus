@@ -8,3 +8,5 @@ lexer.cpp
 parser.hpp
 parser.cpp
 cplus
+parser.dot
+parser.output

@@ -1,6 +1,6 @@
 all:
 	flex -o lexer.cpp lexer.l
-	bison -d -o parser.cpp parser.y
+	bison -d -o parser.cpp parser.y 
 	g++ -g main.cpp lexer.cpp parser.cpp shell.cpp -std=c++17 -o cplus
 
 debug:

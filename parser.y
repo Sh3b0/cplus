@@ -137,6 +137,7 @@ Expression :
         if (driver.pdebug) cout << "[PARSER]: BOOL_EXP evaluates to " << $1 << "\n";
         $$ = make_shared<ExpressionNode>("boolean", make_shared<Literal>($1));
     }
+    | ModifiablePrimary
     // TODO: Expression can also be a ModifiablePrimary (e.g., a[0] + rec.item + 4 + x).
 ;
 
@@ -254,17 +255,17 @@ Body : %empty
 Statement : Assignment | RoutineCall | WhileLoop | ForLoop | IfStatement | ReturnStatement | PrintStatement
 ;
 
-Assignment : ModifiablePrimary BECOMES Expression {
+Assignment : ModifiablePrimary BECOMES Expression SEMICOLON {
     if (driver.pdebug) cout << "[PARSER]: Assignment statement parsed\n";
 }
 ;
 
 ModifiablePrimary :
-    ID DOT ID
-    | ID SB_L INT_EXP SB_R
+    ID DOT ID { if (driver.pdebug) cout << "[PARSER]: access " << $3 << " from " << $1 << '\n'; }
+    | ID SB_L INT_EXP SB_R { if (driver.pdebug) cout << "[PARSER]: " << $1 << "[" << $3 << "]" << "\n"; }
     | ID
 
-RoutineCall : ID B_L Expressions B_R {
+RoutineCall : ID B_L Expressions B_R SEMICOLON {
     if (driver.pdebug) cout << "[PARSER]: routine call for " << $1 << " parsed\n";
 }
 ;

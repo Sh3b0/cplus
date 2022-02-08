@@ -16,7 +16,7 @@ alphanum   [a-zA-Z_0-9]
 
 %%
 
-"#"[^\n]*"\n" ; /* ignore comments */
+#.*     ;       /* ignore comments */
 
 [ \t\n] ;       /* ignore whitespaces */
 
@@ -270,12 +270,12 @@ false {
     return cplus::parser::make_ID(yytext);
 }
 
-{digit}+\.{digit}+ {
+-?{digit}+\.{digit}+ {
     if (m_driver.ldebug) std::cout << "[LEXER]: REAL_VAL\n";
     return cplus::parser::make_REAL_VAL(atof(yytext));
 }
 
-{digit}+ {
+-?{digit}+ {
     if (m_driver.ldebug) std::cout << "[LEXER]: INT_VAL\n";
     return cplus::parser::make_INT_VAL(atoi(yytext));
 }
@@ -285,6 +285,7 @@ false {
 }
 
 <<EOF>> {
+    if (m_driver.ldebug) std::cout << "[LEXER]: EOF \n";
     return 0;
 }
 
