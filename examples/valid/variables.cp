@@ -16,8 +16,8 @@ var blue : color;
 blue.b := 255;
 
 var fibonacci : array[5] integer;
-fibonacci[1] = 1;
-fibonacci[2] = 2;
-fibonacci[3] = fibonacci[1] + fibonacci[2];
-fibonacci[4] = fibonacci[2] + fibonacci[3];
-fibonacci[5] = fibonacci[3] + fibonacci[4];
+fibonacci[1] := 1;
+fibonacci[2] := 2;
+fibonacci[3] := fibonacci[1] + fibonacci[2];
+fibonacci[4] := fibonacci[2] + fibonacci[3];
+fibonacci[5] := fibonacci[3] + fibonacci[4];
