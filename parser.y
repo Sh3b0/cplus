@@ -142,28 +142,35 @@ Expression :
 ;
 
 INT_EXP: INT_VAL                { $$ = $1; }
-      | INT_EXP PLUS INT_EXP    { $$ = $1 + $3; }
-      | INT_EXP MINUS INT_EXP   { $$ = $1 - $3; }
-      | INT_EXP MUL INT_EXP     { $$ = $1 * $3; }
-      | INT_EXP MOD INT_EXP     { $$ = $1 % $3; }
-      | B_L INT_EXP B_R         { $$ = $2; }
+    | INT_EXP PLUS INT_EXP    { $$ = $1 + $3; }
+    | INT_EXP MINUS INT_EXP   { $$ = $1 - $3; }
+    | INT_EXP MUL INT_EXP     { $$ = $1 * $3; }
+    | INT_EXP MOD INT_EXP     { $$ = $1 % $3; }
+    | B_L INT_EXP B_R         { $$ = $2; }
+    // MP
+    | ModifiablePrimary
 ;
 
 REAL_EXP: REAL_VAL               { $$ = $1; }
+    //  real real
     | REAL_EXP PLUS REAL_EXP     { $$ = $1 + $3; }
     | REAL_EXP MINUS REAL_EXP    { $$ = $1 - $3; }
     | REAL_EXP MUL REAL_EXP      { $$ = $1 * $3; }
     | REAL_EXP DIV REAL_EXP      { $$ = $1 / $3; }
     | B_L REAL_EXP B_R           { $$ = $2; }
+    // int real
     | INT_EXP PLUS REAL_EXP      { $$ = $1 + $3; }
     | INT_EXP MINUS REAL_EXP     { $$ = $1 - $3; }
     | INT_EXP MUL REAL_EXP       { $$ = $1 * $3; }
     | INT_EXP DIV REAL_EXP       { $$ = $1 / $3; }
+    // int real
     | REAL_EXP PLUS INT_EXP      { $$ = $1 + $3; }
     | REAL_EXP MINUS INT_EXP     { $$ = $1 - $3; }
     | REAL_EXP MUL INT_EXP       { $$ = $1 * $3; }
     | REAL_EXP DIV INT_EXP       { $$ = $1 / $3; }
     | INT_EXP DIV INT_EXP        { $$ = $1 / (double)$3; }
+    // MP
+    | ModifiablePrimary
 ;
 
 BOOL_EXP : BOOL_VAL { $$ = $1; }
@@ -200,6 +207,8 @@ BOOL_EXP : BOOL_VAL { $$ = $1; }
     | INT_EXP GEQ REAL_EXP    { $$ = $1 >= $3; }
     | INT_EXP EQ REAL_EXP     { $$ = ($1 == $3); }
     | INT_EXP NEQ REAL_EXP    { $$ = ($1 != $3); }
+    // MP
+    | ModifiablePrimary
 ;
 
 
