@@ -14,12 +14,29 @@ void print_ast(ast::ast_node<ast::Node> ast)
 {
     std::cout << "Parsing complete. Printing AST:\n\n";
     std::cout << "PROGRAM ROOT\n";
-    std::cout << "|" << std::endl;
+    std::cout << "|\n";
     std::cout << "|-";
-    if (program->routines.empty())
+
+    std::cout << " Routines:\n";
+    for (const std::shared_ptr<ast::Routine>& routine : program->routines)
     {
-        std::cout << " Routines: * No routines were declared. *\n";
+        std::cout << "|\t|\n";
+        std::cout << "|\t|- ROUTINE\t" << routine->name;
+        if (routine->params.empty())
+        {
+            std::cout << " NO PARAMETERS\n";
+        }
+        else
+        {
+            std::cout << "PARAMETERS";
+            for (const auto& param : routine->params)
+            {
+                std::cout << param << " ";
+                std::cout << "\n";
+            }
+        }
     }
+
     std::cout << "|\n";
     std::cout << "|-";
 
