@@ -24,7 +24,7 @@ routine main() : integer is
     # TODO: note: parser will crash here as fibonacci[1] doesn't resolve to INT_VAL yet,
     # so the RHS couldn't be calculated and resolved to INT_EXP -> Expression -> valid Assignment statement
 
-    fibonacci[3] := fibonacci[1] + fibonacci[2];
-    fibonacci[4] := fibonacci[2] + fibonacci[3];
-    fibonacci[5] := fibonacci[3] + fibonacci[4];
+    # fibonacci[3] := fibonacci[1] + fibonacci[2];
+    # fibonacci[4] := fibonacci[2] + fibonacci[3];
+    # fibonacci[5] := fibonacci[3] + fibonacci[4];
 end

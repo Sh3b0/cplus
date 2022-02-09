@@ -67,7 +67,7 @@ namespace ast
             if (literal.dtype == "integer") stream << get<int>(literal.value);
             else if (literal.dtype == "real") stream << get<double>(literal.value);
             else if (literal.dtype == "boolean") stream << get<bool>(literal.value);
-            else stream << "[AST] Error: a value was not assigned to the requested variable";
+            else stream << "[AST] NO_VALUE";
             return stream;
         }
         
