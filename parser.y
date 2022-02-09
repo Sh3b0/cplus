@@ -240,10 +240,12 @@ VariableDeclarations: %empty | VariableDeclaration SemicolonSeparator VariableDe
 RoutineDeclaration :
     ROUTINE ID B_L Parameters B_R IS Body END {
         if (driver.pdebug) cout << "[PARSER]: routine " << $2 << " is declared\n";
+        program->routines.push_back(make_shared<Routine>($2));
         driver.prompt();
     }
     | ROUTINE ID B_L Parameters B_R COLON Type IS Body END {
         if (driver.pdebug) cout << "[PARSER]: routine " << $2 << " is declared\n";
+        program->routines.push_back(make_shared<Routine>($2));
         driver.prompt();
     }
 ;

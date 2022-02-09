@@ -67,7 +67,7 @@ namespace ast
             if (literal.dtype == "integer") stream << get<int>(literal.value);
             else if (literal.dtype == "real") stream << get<double>(literal.value);
             else if (literal.dtype == "boolean") stream << get<bool>(literal.value);
-            else stream << "[AST] NO_VALUE";
+            else stream << "[AST] Error: a value was not assigned to the requested variable";
             return stream;
         }
         
@@ -101,6 +101,10 @@ namespace ast
     struct Routine : Node {
         string name;
         vector<ast_node<Variable> > params;
+
+        Routine(string name){
+            this->name = name;
+        }
         // vector<ast_node<Statement> > stmts;
         // Type rtype;
     };
