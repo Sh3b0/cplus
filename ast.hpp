@@ -16,6 +16,7 @@ namespace ast
     struct Record;
     struct ExpressionNode;
     struct TypeNode;
+    enum Primitive { NIL, INTEGER, REAL, BOOLEAN };
 }
 
 namespace ast
@@ -30,24 +31,32 @@ namespace ast
     };
 
     struct Program : Node {
-        map<string, np<Variable> > variables;
-        vector<np<Routine> > routines;
-        map<string, np<TypeNode> > types;
+        map<string, np<Variable>> variables;
+        map<string, np<Routine>> routines;
+        map<string, np<TypeNode>> types;
     };
 
     struct TypeNode : Node {
-        variant<string, np<Array>, np<Record> > dtype;
+        variant<np<Primitive>, np<Array>, np<Record> > dtype;
 
         TypeNode( ) {
-            this->dtype = "null";
+            this->dtype = make_shared<Primitive>(NIL);
         }
 
-        TypeNode(variant<string, np<Array>, np<Record> > dtype) {
+        TypeNode(variant<np<Primitive>, np<Array>, np<Record> > dtype) {
             this->dtype = dtype; 
+        }
+        
+        friend ostream& operator<< (ostream& stream, const TypeNode& t) {
+            std::visit([&](variant<np<Primitive>, np<Array>, np<Record> >&& arg){
+                if(holds_alternative<np<Primitive>>(arg)) stream << "Primitive";
+                else if(holds_alternative<np<Array>>(arg)) stream << "Array";
+                else if(holds_alternative<np<Record>>(arg)) stream << "Record";
+            }, t.dtype);
+            return stream;
         }
     };
 
-    // Literal has a data type and value
     struct Literal : Node {
         np<TypeNode> dtype;
         variant<int, double, bool> value;
@@ -64,32 +73,19 @@ namespace ast
         }
 
         np<Literal> add(np<Literal> that) {
-            if (get<string>(this->dtype->dtype) == "integer" && get<string>(that->dtype->dtype) == "integer") {
-                return make_shared<Literal>(make_shared<TypeNode>("integer"), get<int>(this->value) + get<int>(that->value));
+            if (*get<np<Primitive>>(this->dtype->dtype) == INTEGER && *get<np<Primitive>>(that->dtype->dtype) == INTEGER) {
+                return make_shared<Literal>(make_shared<TypeNode>(make_shared<Primitive>(INTEGER)), get<int>(this->value) + get<int>(that->value));
             }
             // TODO: checks for other dtypes
             return nullptr;
         }
 
-        friend std::ostream& operator<< (std::ostream& stream, const Literal& literal) {
-            if (get<string>(literal.dtype->dtype) == "integer")
-                stream << get<int>(literal.value);
-
-            else if (get<string>(literal.dtype->dtype) == "real")
-                stream << get<double>(literal.value);
-
-            else if (get<string>(literal.dtype->dtype) == "boolean")
-                stream << get<bool>(literal.value);
-            
-            else
-                stream << "null";
-
+        friend ostream& operator<< (ostream& stream, const Literal& literal) {
+            std::visit([&](auto&& arg){stream << arg;}, literal.value);
             return stream;
         }
-        
     };
 
-    // Variable has a dtype, name and a value can be assigned to it.
     struct Variable : Node {
         np<TypeNode> dtype;
         string name;
@@ -100,9 +96,13 @@ namespace ast
             this->name = name;
             this->value = value;
         }
+
+        friend ostream& operator<< (ostream& stream, const Variable& var) {
+            stream << *(var.dtype) << " " << var.name << " = " << *(var.value);
+            return stream;
+        }
     };
 
-    // Expression has a dtype and a value
     struct ExpressionNode : Node {
         np<TypeNode> dtype;
         np<Literal> value;
@@ -113,25 +113,21 @@ namespace ast
         }
     };
 
-    // Routine has a name, a list of parameters, a body, and a return type.
-    struct Routine : Node {
-        string name;
-        vector<np<Variable> > params;
-
-        Routine(string name){
-            this->name = name;
-        }
-        // vector<np<Statement> > stmts;
-        // Type rtype;
-    };
-
     struct Array : Node {
         int size;
         np<TypeNode> dtype;
+        vector<np<Variable> > data;
         Array () { }
-        Array(int size, np<TypeNode> dtype){
+        Array(int size, np<TypeNode> dtype) {
             this->size = size;
             this->dtype = dtype;
+            for(int i = 0; i < size; i++)
+                data.push_back(make_shared<Variable>(dtype, "", make_shared<Literal>()));
+        }
+
+        friend ostream& operator<< (ostream& stream, const Array& arr) {
+            stream << "array[" << arr.size << "] " << '\n';
+            return stream;
         }
     };
 
@@ -141,6 +137,33 @@ namespace ast
         Record(map<string, np<Variable> > variables){
             this->variables = variables;
         }
+
+        friend ostream& operator<< (ostream& stream, const Record& rec) {
+            stream << "record { ";
+            for(auto u : rec.variables) stream << *(u.second) << "; ";
+            stream << " }\n";
+            return stream;
+        }
     };
     
+    struct Routine : Node {
+        string name;
+        map<string, np<Variable> > params;
+        np<TypeNode> rtype;
+        // vector<np<Statement> > stmts;
+        
+        Routine(string name, map<string, np<Variable> > params, np<TypeNode> rtype){
+            this->name = name;
+            this->params = params;
+            this->rtype = rtype;
+        }
+
+        friend ostream& operator<< (ostream& stream, const Routine& routine) {
+            stream << "routine " << routine.name << "( ";
+            for(auto u : routine.params) stream << *(u.second) << ", ";
+            stream << " )\n";
+            return stream;
+        }
+    };
+
 }

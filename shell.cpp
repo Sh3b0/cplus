@@ -5,6 +5,8 @@
 
 using namespace cplus;
 
+extern ast::np<ast::Program> program;
+
 shell::shell() : l(*this), p(l, *this) {}
 
 int shell::parse_program()
@@ -76,5 +78,21 @@ int shell::parse_args(int argc, char **argv)
         cout << "C+ 0.1.0 (" << now << ")\n";
         prompt();
     }
+    return 0;
+}
+
+int shell::print_ast() {
+    cout << "\nRoutines\n==========\n";
+    for(auto u:program->routines)
+        cout << "\t" << *u.second << '\n';
+
+    cout << "\nVariables\n==========\n";
+    for(auto u:program->variables)
+        cout << "\t" << *u.second << '\n';
+    
+    cout << "\nType aliases\n=============\n";
+    for(auto u:program->types)
+        cout << "\t" << u.first << " -> " << *u.second << '\n';
+    
     return 0;
 }

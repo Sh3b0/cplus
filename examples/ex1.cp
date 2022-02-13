@@ -16,13 +16,18 @@ tuple[1] := 1;
 var res is tuple[1];
 print res;
 
+# Note: parser crashes with Seg fault
+# as it tries to get the value for a and b
+# which are not assigned yet.
+# after fixing this issue replace 1 with a and 2 with b
 
 routine max (a : integer, b : integer) : integer is
-    if a > b then
-        return a;
+    if 1 > 2 then
+        return 1;
     else
-        return b;
+        return 2;
+    end
 end
 
-var mx is max(5, 4);
-print mx;
+# var mx is max(5, 4);
+# print mx;

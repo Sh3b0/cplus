@@ -21,6 +21,7 @@ namespace cplus
 
         int parse_program();
         int parse_args(int argc, char **argv);
+        int print_ast();
         void readFrom(std::istream *is);
         void prompt();
         void init();

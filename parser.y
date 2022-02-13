@@ -32,8 +32,8 @@
 %type <double> REAL_VAL REAL_EXP
 %type <bool> BOOL_VAL BOOL_EXP
 
-%type <ast::np<ast::Variable> > VariableDeclaration ModifiablePrimary
-%type <std::map<std::string, ast::np<ast::Variable> > > VariableDeclarations
+%type <ast::np<ast::Variable> > VariableDeclaration ModifiablePrimary ParameterDeclaration
+%type <std::map<std::string, ast::np<ast::Variable> > > VariableDeclarations Parameters
 %type <ast::np<ast::ExpressionNode> > Expression
 %type <ast::np<ast::TypeNode> > Type PrimitiveType UserType ArrayType RecordType TypeDeclaration
 %type <ast::np<ast::Literal> > ModifiablePrimaryEq
@@ -93,16 +93,16 @@ CommaSeparator : COMMA | %empty
 ;
 
 Program:
-    // %empty { if (shell.pdebug) cout << "[PARSER]: EOF\n"; }
-    /* | SimpleDeclaration SemicolonSeparator Program */
-    RoutineDeclaration SemicolonSeparator Program
-    | Body
+    %empty { if (shell.pdebug) cout << "[PARSER]: EOF\n"; }
+    | SimpleDeclaration SemicolonSeparator Program
+    | RoutineDeclaration SemicolonSeparator Program
+    | Statement SemicolonSeparator Program
 ;
 
 SimpleDeclaration:
     VariableDeclaration {
-        auto var = $1;
-        program->variables[var->name] = var;
+        if(shell.pdebug) cout << "[PARSER]: " << *$1 << '\n';
+        program->variables[$1->name] = $1;
         shell.prompt();
     }
     | TypeDeclaration {
@@ -113,56 +113,38 @@ SimpleDeclaration:
 VariableDeclaration:
     VAR ID IS Expression SEMICOLON {
         auto exp = $4;
-        
-        if (shell.pdebug)
-            cout << "[PARSER]: " << exp->dtype << " " << $2 << " = " << exp->value << "\n";
-        
         $$ = make_shared<Variable> (exp->dtype, $2, exp->value);
     }
 
     | VAR ID COLON Type SEMICOLON {
-        if (shell.pdebug)
-            cout << "[PARSER]: " << $4 << " " << $2 << "\n";
-    
         $$ = make_shared<Variable> ($4, $2, make_shared<Literal>());
     }
 
     | VAR ID COLON Type IS Expression SEMICOLON {
         auto exp = $6;
-
-        if (shell.pdebug)
-            cout << "[PARSER]: " << exp->dtype << " " << $2 << " = " << exp->value << "\n";
-        
         $$ = make_shared<Variable> (exp->dtype, $2, exp->value);
     }
 ;
 
 // TODO: Why do we need ExpressionNode again? It seems to do the same job as Literal
+// TODO: Expression can contain a RoutineCall
 // Also, why literal constructor need the dtype
-// TODO: Expression shouldn't be %empty
 Expression :
     INT_EXP {
-        if (shell.pdebug) cout << "[PARSER]: INT_EXP evaluates to " << $1 << "\n";
-        auto type = make_shared<TypeNode>("integer");
+        auto type = make_shared<TypeNode>(make_shared<Primitive>(ast::INTEGER));
         $$ = make_shared<ExpressionNode>(type, make_shared<Literal>(type, $1));
     }
     | REAL_EXP {
-        if (shell.pdebug) cout << "[PARSER]: REAL_EXP evaluates to " << $1 << "\n";
-        auto type = make_shared<TypeNode>("real");
+        auto type = make_shared<TypeNode>(make_shared<Primitive>(ast::REAL));
         $$ = make_shared<ExpressionNode>(type, make_shared<Literal>(type, $1));
     }
     | BOOL_EXP {
-        if (shell.pdebug) cout << "[PARSER]: BOOL_EXP evaluates to " << $1 << "\n";
-        auto type = make_shared<TypeNode>("boolean");
+        auto type = make_shared<TypeNode>(make_shared<Primitive>(ast::BOOLEAN));
         $$ = make_shared<ExpressionNode>(type, make_shared<Literal>(type, $1));
     }
-    // TODO: Expression can also be a ModifiablePrimaryEq (e.g., a[0] + rec.item + (4 * 4) + x).
     | ModifiablePrimaryEq {
-        if (shell.pdebug) cout << "[PARSER]: ModifiablePrimaryEq Parsed\n";
-        auto lit = $1;
-        $$ = make_shared<ExpressionNode>(lit->dtype, lit);
+        $$ = make_shared<ExpressionNode>($1->dtype, $1);
     }
-    
 ;
 
 // Simplifies to a Literal
@@ -173,9 +155,9 @@ ModifiablePrimaryEq :
     }
     | ModifiablePrimary PLUS ModifiablePrimaryEq {
         auto var = $1;
-        // TODO: SemanticAnalyzer may face his worst enemy: NullPointerException
         $$ = var->value->add($3);
     }
+    
     // TODO: Add more rules for MINUS, MUL, DIV, MOD, EQ, NEQ, LT, GT, LEQ, GEQ, AND, OR, XOR, NOT 
 
 // TODO: implement the same functionality in a shorter/smarter way
@@ -256,7 +238,9 @@ BOOL_EXP : BOOL_VAL          { $$ = $1; }
 
 
 TypeDeclaration : TYPE ID IS Type SEMICOLON {
-    if (shell.pdebug) cout << "[PARSER]: alias " << $2 << " for type " << $4 << "\n";
+    if (shell.pdebug) {
+        cout << "[PARSER]: alias " << $2 << " for type " << *$4 << '\n';
+    }
     program->types[$2] = $4;
 }
 ;
@@ -266,9 +250,16 @@ Type : PrimitiveType | UserType | ID {
 }
 ;
 
-PrimitiveType : INT_KW { $$ = make_shared<TypeNode>("integer"); }
-                | REAL_KW { make_shared<TypeNode>("real"); }
-                | BOOLEAN_KW { make_shared<TypeNode>("boolean"); }
+PrimitiveType :
+    INT_KW {
+        $$ = make_shared<TypeNode>(make_shared<Primitive>(ast::INTEGER));
+    }
+    | REAL_KW {
+        $$ = make_shared<TypeNode>(make_shared<Primitive>(ast::REAL));
+    }
+    | BOOLEAN_KW {
+        $$ = make_shared<TypeNode>(make_shared<Primitive>(ast::BOOLEAN));
+    }
 ;
 
 UserType : ArrayType | RecordType
@@ -297,28 +288,40 @@ VariableDeclarations:
     }
 ;
 
+// TODO: detecting rtype in the first case?
 RoutineDeclaration :
     ROUTINE ID B_L Parameters B_R IS Body END {
         if (shell.pdebug) cout << "[PARSER]: routine " << $2 << " is declared\n";
-        program->routines.push_back(make_shared<Routine>($2));
+        program->routines[$2] = make_shared<Routine>($2, $4, make_shared<TypeNode>());
         shell.prompt();
     }
     | ROUTINE ID B_L Parameters B_R COLON Type IS Body END {
         if (shell.pdebug) cout << "[PARSER]: routine " << $2 << " is declared\n";
-        program->routines.push_back(make_shared<Routine>($2));
+        program->routines[$2] = make_shared<Routine>($2, $4, $7);
         shell.prompt();
     }
 ;
 
 Parameters :
-    %empty | ParameterDeclaration CommaSeparator Parameters
+    %empty {
+        map< string, np<Variable> > tmp;
+        $$ = tmp;
+    }
+    | ParameterDeclaration CommaSeparator Parameters {
+        auto vars = $3;
+        auto var = $1;
+        vars[var->name] = var;
+        $$ = vars;
+    }
 ;
 
 ParameterDeclaration :
-    ID COLON Type
+    ID COLON Type {
+        $$ = make_shared<Variable>($3, $1, make_shared<Literal>());
+    }
 ;
 
-Body : %empty { if (shell.pdebug) cout << "[PARSER]: EOF\n"; }
+Body : %empty
     | SimpleDeclaration SemicolonSeparator Body
     | Statement SemicolonSeparator Body
 ;
@@ -338,7 +341,6 @@ Assignment : ModifiablePrimary BECOMES Expression SEMICOLON {
 // Represents a variable name, an array element, or a record field
 ModifiablePrimary :
     ID DOT ID {
-        if (shell.pdebug) cout << "[PARSER]: access " << $3 << " from " << $1 << '\n';
         // TODO: SemanticAnalyezer possible errors
         // - $1 is not defined
         // - $1 is not a record
@@ -347,24 +349,55 @@ ModifiablePrimary :
     }
 
     | ID SB_L INT_EXP SB_R {
-        if (shell.pdebug) cout << "[PARSER]: " << $1 << "[" << $3 << "]" << "\n";
-        // TODO: return the node for the variable named $1[$3]
+        // TODO: SemanticAnalyzer possible errors
+        // - $1 is not subscriptable
+        // - Array index out of range
+        $$ = get<np<Array>>(program->types[$1]->dtype)->data[$3-1];
     }
 
     | ID {
-        if (shell.pdebug) cout << "[PARSER]: " << $1 << "\n";
         // TODO: SemanticAnalyezer possible errors: $1 is not defined.
         $$ = program->variables[$1];
     }
 
 RoutineCall : ID B_L Expressions B_R SEMICOLON {
     if (shell.pdebug) cout << "[PARSER]: routine call for " << $1 << " parsed\n";
+    // TODO SemanticAnalyezer possible errors:
+    // - $1 is not callable
+    // - Argument type mismatch
+    // - Arity mismatch
 }
 ;
 
 Expressions :
     %empty | Expression CommaSeparator Expressions
 ;
+
+IfStatement :
+    IF Expression THEN Body END {
+        if (shell.pdebug) cout << "[PARSER]: if statement parsed\n";
+    }
+    | IF Expression THEN Body ELSE Body END {
+        if (shell.pdebug) cout << "[PARSER]: if-else statement parsed\n";
+    }
+;
+
+ReturnStatement :
+    RETURN Expression SEMICOLON {
+        if (shell.pdebug) cout << "[PARSER]: return statement parsed\n";
+    }
+;
+
+// TODO: Generalize to PRINT Expression
+PrintStatement :
+    PRINT ModifiablePrimary SEMICOLON {
+        if (shell.pdebug) cout << "[PARSER]: print " << *$2 << "\n";
+        cout << *($2->value) << '\n';
+        shell.prompt();
+    }
+    | PRINT RoutineCall SEMICOLON
+;
+
 
 WhileLoop : WHILE Expression LOOP Body END {
     if (shell.pdebug) cout << "[PARSER]: while loop parsed\n";
@@ -383,38 +416,6 @@ ForLoop :
 
 Range :
     Expression DDOT Expression
-;
-
-IfStatement :
-    IF Expression THEN Body END {
-        if (shell.pdebug) cout << "[PARSER]: if statement parsed\n";
-    }
-    | IF Expression THEN Body ELSE Body END {
-        if (shell.pdebug) cout << "[PARSER]: if-else statement parsed\n";
-    }
-;
-
-ReturnStatement :
-    RETURN ID SEMICOLON {
-        if (shell.pdebug) cout << "[PARSER]: return statement parsed\n";
-    }
-;
-
-// Print statements are allowed only inside routines.
-// For now, if a print statement was encountered in a routine declaration,
-// it will be executed immediately, this can help with debugging for now.
-
-// Future behaviour: program starts from "main" routine.
-// Other routines should only be stored and executed only upon call. 
-
-// TODO: Generalize to PRINT Expression
-PrintStatement :
-    PRINT ModifiablePrimary SEMICOLON {
-        if (shell.pdebug) cout << "[PARSER]: print " << $2 << "\n";
-        cout << *($2->value) << '\n';
-        shell.prompt();
-    }
-    | PRINT RoutineCall SEMICOLON // TODO
 ;
 
 %%
