@@ -10,6 +10,7 @@ shell s;
 
 extern ast::np<ast::Program> program;  // Points to the whole program node.
 
+// TODO: data structures changed to map, modify this function accordingly.
 void print_ast(ast::np<ast::Node> ast)
 {
     std::cout << "Parsing complete. Printing AST:\n\n";

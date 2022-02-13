@@ -178,6 +178,7 @@ ModifiablePrimaryEq :
     }
     // TODO: Add more rules for MINUS, MUL, DIV, MOD, EQ, NEQ, LT, GT, LEQ, GEQ, AND, OR, XOR, NOT 
 
+// TODO: implement the same functionality in a shorter/smarter way
 INT_EXP: INT_VAL              { $$ = $1; }
     | B_L INT_EXP B_R         { $$ = $2; }
     | INT_EXP PLUS INT_EXP    { $$ = $1 + $3; }

@@ -42,16 +42,8 @@ namespace ast
             this->dtype = "null";
         }
 
-        TypeNode(string dtype) {
+        TypeNode(variant<string, np<Array>, np<Record> > dtype) {
             this->dtype = dtype; 
-        }
-
-        TypeNode(np<Array> dtype) {
-            this->dtype = dtype;
-        }
-
-        TypeNode(np<Record> dtype) {
-            this->dtype = dtype;
         }
     };
 
@@ -66,17 +58,7 @@ namespace ast
             this->dtype = dtype;
         }
 
-        Literal(np<TypeNode> dtype, int value) {
-            this->dtype = dtype;
-            this->value = value;
-        }
-
-        Literal(np<TypeNode> dtype, double value) {
-            this->dtype = dtype;
-            this->value = value;
-        }
-
-        Literal(np<TypeNode> dtype, bool value) {
+        Literal(np<TypeNode> dtype, variant<int, double, bool> value) {
             this->dtype = dtype;
             this->value = value;
         }
