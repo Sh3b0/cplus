@@ -8,9 +8,9 @@ using namespace std;
 
 shell s;
 
-extern ast::ast_node<ast::Program> program;  // Points to the whole program node.
+extern ast::np<ast::Program> program;  // Points to the whole program node.
 
-void print_ast(ast::ast_node<ast::Node> ast)
+void print_ast(ast::np<ast::Node> ast)
 {
     std::cout << "Parsing complete. Printing AST:\n\n";
     std::cout << "PROGRAM ROOT\n";
@@ -41,10 +41,10 @@ void print_ast(ast::ast_node<ast::Node> ast)
     std::cout << "|-";
 
     std::cout << " Variables:\n";
-    for (const std::shared_ptr<ast::Variable>& var : program->variables)
+    for (auto u: program->variables)
     {
         std::cout << "|\t|\n";
-        std::cout << "|\t|- VARIABLE\t" << var->name << " TYPE\t" << var->dtype << " VALUE\t" << var->value << "\n";
+        // std::cout << "|\t|- VARIABLE\t" << u.first << " TYPE\t" << u.second << " VALUE\t" << var->value << "\n";
     }
     std::cout << std::endl;
 }

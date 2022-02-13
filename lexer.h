@@ -19,12 +19,12 @@ namespace cplus {
     
     class lexer : public yyFlexLexer {
     public:
-        lexer(shell& driver) : m_driver(driver) { }
+        lexer(shell& shell) : driver(shell) { }
         virtual ~lexer() {}
         virtual cplus::parser::symbol_type get_next_token();
         
     private:
-        shell &m_driver;
+        shell &driver;
     };
 
 }

@@ -10,9 +10,9 @@
 %define api.namespace { cplus }
 
 %lex-param { cplus::lexer &lexer }
-%lex-param { cplus::shell &driver }
+%lex-param { cplus::shell &shell }
 %parse-param { cplus::lexer &lexer }
-%parse-param { cplus::shell &driver }
+%parse-param { cplus::shell &shell }
 
 %token VAR ID IS INT_VAL REAL_VAL BOOL_VAL    // var <identifier> is \d+ \d+\.\d+ true|false
 %token TYPE INT_KW REAL_KW BOOLEAN_KW         // type integer real boolean
@@ -25,13 +25,18 @@
 %token PRINT                                  // print
 %token IF THEN ELSE WHILE FOR IN LOOP REVERSE // if then else while for in loop reverse
 
-%type <std::string> ID Type PrimitiveType UserType ArrayType RecordType
+%type <std::string> ID
+
+// TODO: make them literals
 %type <int> INT_VAL INT_EXP
 %type <double> REAL_VAL REAL_EXP
 %type <bool> BOOL_VAL BOOL_EXP
 
-%type <ast::ast_node<ast::Variable> > VariableDeclaration
-%type <ast::ast_node<ast::ExpressionNode> > Expression
+%type <ast::np<ast::Variable> > VariableDeclaration ModifiablePrimary
+%type <std::map<std::string, ast::np<ast::Variable> > > VariableDeclarations
+%type <ast::np<ast::ExpressionNode> > Expression
+%type <ast::np<ast::TypeNode> > Type PrimitiveType UserType ArrayType RecordType TypeDeclaration
+%type <ast::np<ast::Literal> > ModifiablePrimaryEq
 
 %left COMMA
 %right BECOMES
@@ -66,14 +71,14 @@
     #include "lexer.h"
     #include "parser.hpp"
     #include "shell.hpp"
-    static cplus::parser::symbol_type yylex(cplus::lexer &lexer, cplus::shell &driver) {
+    static cplus::parser::symbol_type yylex(cplus::lexer &lexer, cplus::shell &shell) {
         return lexer.get_next_token();
     }
     
     using namespace cplus;
     using namespace ast;
     
-    ast_node<Program> program = make_shared<Program>();  // Points to the whole program node.
+    np<Program> program = make_shared<Program>();  // Points to the whole program node.
 }
 
 
@@ -88,165 +93,219 @@ CommaSeparator : COMMA | %empty
 ;
 
 Program:
-    %empty { if (driver.pdebug) cout << "[PARSER]: EOF\n"; }
-    | SimpleDeclaration SemicolonSeparator Program
-    | RoutineDeclaration SemicolonSeparator Program
-    | PrintStatement // Just for interactive testing, should be removed later.
+    // %empty { if (shell.pdebug) cout << "[PARSER]: EOF\n"; }
+    /* | SimpleDeclaration SemicolonSeparator Program */
+    RoutineDeclaration SemicolonSeparator Program
+    | Body
 ;
 
 SimpleDeclaration:
     VariableDeclaration {
-        program->variables.push_back($1);
-        driver.prompt();
+        auto var = $1;
+        program->variables[var->name] = var;
+        shell.prompt();
     }
-    | TypeDeclaration { driver.prompt(); }
+    | TypeDeclaration {
+        shell.prompt();
+    }
 ;
 
 VariableDeclaration:
     VAR ID IS Expression SEMICOLON {
         auto exp = $4;
-        if (driver.pdebug) cout << "[PARSER]: " << exp->dtype << " " << $2 << " = " << exp->value << "\n";
-        $$ = make_shared<Variable> (exp->dtype, $2, make_shared<Literal>(exp->value));
+        
+        if (shell.pdebug)
+            cout << "[PARSER]: " << exp->dtype << " " << $2 << " = " << exp->value << "\n";
+        
+        $$ = make_shared<Variable> (exp->dtype, $2, exp->value);
     }
+
     | VAR ID COLON Type SEMICOLON {
-        if (driver.pdebug) cout << "[PARSER]: " << $4 << " " << $2 << "\n";
+        if (shell.pdebug)
+            cout << "[PARSER]: " << $4 << " " << $2 << "\n";
+    
         $$ = make_shared<Variable> ($4, $2, make_shared<Literal>());
     }
+
     | VAR ID COLON Type IS Expression SEMICOLON {
         auto exp = $6;
-        if (driver.pdebug) cout << "[PARSER]: " << exp->dtype << " " << $2 << " = " << exp->value << "\n";
-        
-        if (exp->dtype != $4) {
-            cout << "[PARSER]: Error: Type mismatch: " << exp->dtype << " cannot be unified with " << $4 << '\n';
-        }
 
-        $$ = make_shared<Variable> (exp->dtype, $2, make_shared<Literal>(exp->value));
+        if (shell.pdebug)
+            cout << "[PARSER]: " << exp->dtype << " " << $2 << " = " << exp->value << "\n";
+        
+        $$ = make_shared<Variable> (exp->dtype, $2, exp->value);
     }
 ;
 
+// TODO: Why do we need ExpressionNode again? It seems to do the same job as Literal
+// Also, why literal constructor need the dtype
+// TODO: Expression shouldn't be %empty
 Expression :
     INT_EXP {
-        if (driver.pdebug) cout << "[PARSER]: INT_EXP evaluates to " << $1 << "\n";
-        $$ = make_shared<ExpressionNode>("integer", make_shared<Literal>($1));
+        if (shell.pdebug) cout << "[PARSER]: INT_EXP evaluates to " << $1 << "\n";
+        auto type = make_shared<TypeNode>("integer");
+        $$ = make_shared<ExpressionNode>(type, make_shared<Literal>(type, $1));
     }
     | REAL_EXP {
-        if (driver.pdebug) cout << "[PARSER]: REAL_EXP evaluates to " << $1 << "\n";
-        $$ = make_shared<ExpressionNode>("real", make_shared<Literal>($1));
+        if (shell.pdebug) cout << "[PARSER]: REAL_EXP evaluates to " << $1 << "\n";
+        auto type = make_shared<TypeNode>("real");
+        $$ = make_shared<ExpressionNode>(type, make_shared<Literal>(type, $1));
     }
     | BOOL_EXP {
-        if (driver.pdebug) cout << "[PARSER]: BOOL_EXP evaluates to " << $1 << "\n";
-        $$ = make_shared<ExpressionNode>("boolean", make_shared<Literal>($1));
+        if (shell.pdebug) cout << "[PARSER]: BOOL_EXP evaluates to " << $1 << "\n";
+        auto type = make_shared<TypeNode>("boolean");
+        $$ = make_shared<ExpressionNode>(type, make_shared<Literal>(type, $1));
     }
-    | ModifiablePrimary
-    // TODO: Expression can also be a ModifiablePrimary (e.g., a[0] + rec.item + 4 + x).
+    // TODO: Expression can also be a ModifiablePrimaryEq (e.g., a[0] + rec.item + (4 * 4) + x).
+    | ModifiablePrimaryEq {
+        if (shell.pdebug) cout << "[PARSER]: ModifiablePrimaryEq Parsed\n";
+        auto lit = $1;
+        $$ = make_shared<ExpressionNode>(lit->dtype, lit);
+    }
+    
 ;
 
-INT_EXP: INT_VAL                { $$ = $1; }
+// Simplifies to a Literal
+ModifiablePrimaryEq :
+    ModifiablePrimary {
+        auto var = $1;
+        $$ = var->value;
+    }
+    | ModifiablePrimary PLUS ModifiablePrimaryEq {
+        auto var = $1;
+        // TODO: SemanticAnalyzer may face his worst enemy: NullPointerException
+        $$ = var->value->add($3);
+    }
+    // TODO: Add more rules for MINUS, MUL, DIV, MOD, EQ, NEQ, LT, GT, LEQ, GEQ, AND, OR, XOR, NOT 
+
+INT_EXP: INT_VAL              { $$ = $1; }
+    | B_L INT_EXP B_R         { $$ = $2; }
     | INT_EXP PLUS INT_EXP    { $$ = $1 + $3; }
     | INT_EXP MINUS INT_EXP   { $$ = $1 - $3; }
     | INT_EXP MUL INT_EXP     { $$ = $1 * $3; }
     | INT_EXP MOD INT_EXP     { $$ = $1 % $3; }
-    | B_L INT_EXP B_R         { $$ = $2; }
-    // MP
-    | ModifiablePrimary
 ;
 
 REAL_EXP: REAL_VAL               { $$ = $1; }
-    //  real real
+    | B_L REAL_EXP B_R           { $$ = $2; }
+    
+    // real real
     | REAL_EXP PLUS REAL_EXP     { $$ = $1 + $3; }
     | REAL_EXP MINUS REAL_EXP    { $$ = $1 - $3; }
     | REAL_EXP MUL REAL_EXP      { $$ = $1 * $3; }
     | REAL_EXP DIV REAL_EXP      { $$ = $1 / $3; }
-    | B_L REAL_EXP B_R           { $$ = $2; }
+
     // int real
     | INT_EXP PLUS REAL_EXP      { $$ = $1 + $3; }
     | INT_EXP MINUS REAL_EXP     { $$ = $1 - $3; }
     | INT_EXP MUL REAL_EXP       { $$ = $1 * $3; }
     | INT_EXP DIV REAL_EXP       { $$ = $1 / $3; }
-    // int real
+
+    // real int
     | REAL_EXP PLUS INT_EXP      { $$ = $1 + $3; }
     | REAL_EXP MINUS INT_EXP     { $$ = $1 - $3; }
     | REAL_EXP MUL INT_EXP       { $$ = $1 * $3; }
     | REAL_EXP DIV INT_EXP       { $$ = $1 / $3; }
+
+    // int int
     | INT_EXP DIV INT_EXP        { $$ = $1 / (double)$3; }
-    // MP
-    | ModifiablePrimary
 ;
 
-BOOL_EXP : BOOL_VAL { $$ = $1; }
+BOOL_EXP : BOOL_VAL          { $$ = $1; }
+    | B_L BOOL_EXP B_R       { $$ = $2; }
+    
+    // bool bool
     | BOOL_EXP AND BOOL_EXP  { $$ = $1 && $3; }
     | BOOL_EXP OR BOOL_EXP   { $$ = $1 || $3; }
     | BOOL_EXP XOR BOOL_EXP  { $$ = $1 != $3; }
     | NOT BOOL_EXP           { $$ = !($2); }
-    | B_L BOOL_EXP B_R       { $$ = $2; }
-    // integer
+
+    // int int
     | INT_EXP LT INT_EXP     { $$ = $1 < $3; }
     | INT_EXP LEQ INT_EXP    { $$ = $1 <= $3; }
     | INT_EXP GT INT_EXP     { $$ = $1 > $3; }
     | INT_EXP GEQ INT_EXP    { $$ = $1 >= $3; }
     | INT_EXP EQ INT_EXP     { $$ = ($1 == $3); }
     | INT_EXP NEQ INT_EXP    { $$ = ($1 != $3); }
-    // real
-    | REAL_EXP LT REAL_EXP     { $$ = $1 < $3; }
-    | REAL_EXP LEQ REAL_EXP    { $$ = $1 <= $3; }
-    | REAL_EXP GT REAL_EXP     { $$ = $1 > $3; }
-    | REAL_EXP GEQ REAL_EXP    { $$ = $1 >= $3; }
-    | REAL_EXP EQ REAL_EXP     { $$ = ($1 == $3); }
-    | REAL_EXP NEQ REAL_EXP    { $$ = ($1 != $3); }
-    // real and integer
-    | REAL_EXP LT INT_EXP     { $$ = $1 < $3; }
-    | REAL_EXP LEQ INT_EXP    { $$ = $1 <= $3; }
-    | REAL_EXP GT INT_EXP     { $$ = $1 > $3; }
-    | REAL_EXP GEQ INT_EXP    { $$ = $1 >= $3; }
-    | REAL_EXP EQ INT_EXP     { $$ = ($1 == $3); }
-    | REAL_EXP NEQ INT_EXP    { $$ = ($1 != $3); }
-    // integer and real
-    | INT_EXP LT REAL_EXP     { $$ = $1 < $3; }
-    | INT_EXP LEQ REAL_EXP    { $$ = $1 <= $3; }
-    | INT_EXP GT REAL_EXP     { $$ = $1 > $3; }
-    | INT_EXP GEQ REAL_EXP    { $$ = $1 >= $3; }
-    | INT_EXP EQ REAL_EXP     { $$ = ($1 == $3); }
-    | INT_EXP NEQ REAL_EXP    { $$ = ($1 != $3); }
-    // MP
-    | ModifiablePrimary
+
+    // real real
+    | REAL_EXP LT REAL_EXP   { $$ = $1 < $3; }
+    | REAL_EXP LEQ REAL_EXP  { $$ = $1 <= $3; }
+    | REAL_EXP GT REAL_EXP   { $$ = $1 > $3; }
+    | REAL_EXP GEQ REAL_EXP  { $$ = $1 >= $3; }
+    | REAL_EXP EQ REAL_EXP   { $$ = ($1 == $3); }
+    | REAL_EXP NEQ REAL_EXP  { $$ = ($1 != $3); }
+
+    // real integer
+    | REAL_EXP LT INT_EXP    { $$ = $1 < $3; }
+    | REAL_EXP LEQ INT_EXP   { $$ = $1 <= $3; }
+    | REAL_EXP GT INT_EXP    { $$ = $1 > $3; }
+    | REAL_EXP GEQ INT_EXP   { $$ = $1 >= $3; }
+    | REAL_EXP EQ INT_EXP    { $$ = ($1 == $3); }
+    | REAL_EXP NEQ INT_EXP   { $$ = ($1 != $3); }
+
+    // integer real
+    | INT_EXP LT REAL_EXP    { $$ = $1 < $3; }
+    | INT_EXP LEQ REAL_EXP   { $$ = $1 <= $3; }
+    | INT_EXP GT REAL_EXP    { $$ = $1 > $3; }
+    | INT_EXP GEQ REAL_EXP   { $$ = $1 >= $3; }
+    | INT_EXP EQ REAL_EXP    { $$ = ($1 == $3); }
+    | INT_EXP NEQ REAL_EXP   { $$ = ($1 != $3); }
 ;
 
 
 TypeDeclaration : TYPE ID IS Type SEMICOLON {
-    if (driver.pdebug) cout << "[PARSER]: alias " << $2 << " for type " << $4 << "\n";
+    if (shell.pdebug) cout << "[PARSER]: alias " << $2 << " for type " << $4 << "\n";
+    program->types[$2] = $4;
 }
 ;
 
-Type : PrimitiveType | UserType | ID
+Type : PrimitiveType | UserType | ID {
+    $$ = program->types[$1];
+}
 ;
 
-PrimitiveType : INT_KW { $$ = "integer"; }
-                | REAL_KW { $$ = "real"; }
-                | BOOLEAN_KW { $$ = "boolean"; }
+PrimitiveType : INT_KW { $$ = make_shared<TypeNode>("integer"); }
+                | REAL_KW { make_shared<TypeNode>("real"); }
+                | BOOLEAN_KW { make_shared<TypeNode>("boolean"); }
 ;
 
 UserType : ArrayType | RecordType
 ;
 
-ArrayType : ARRAY SB_L INT_EXP SB_R Type { $$ = $5 + "[" + to_string($3) + "]"; }
+ArrayType : ARRAY SB_L INT_EXP SB_R Type {
+    $$ = make_shared<TypeNode>(make_shared<Array>($3, $5));
+}
 ;
 
-RecordType : RECORD CB_L VariableDeclarations CB_R END { $$ = "record"; }
+RecordType : RECORD CB_L VariableDeclarations CB_R END {
+    $$ = make_shared<TypeNode>(make_shared<Record>($3));
+}
 ;
 
-VariableDeclarations: %empty | VariableDeclaration SemicolonSeparator VariableDeclarations
+VariableDeclarations:
+    %empty {
+        map< string, np<Variable> > tmp;
+        $$ = tmp;
+    }
+    | VariableDeclaration SemicolonSeparator VariableDeclarations {
+        auto vars = $3;
+        auto var = $1;
+        vars[var->name] = var;
+        $$ = vars;
+    }
 ;
 
 RoutineDeclaration :
     ROUTINE ID B_L Parameters B_R IS Body END {
-        if (driver.pdebug) cout << "[PARSER]: routine " << $2 << " is declared\n";
+        if (shell.pdebug) cout << "[PARSER]: routine " << $2 << " is declared\n";
         program->routines.push_back(make_shared<Routine>($2));
-        driver.prompt();
+        shell.prompt();
     }
     | ROUTINE ID B_L Parameters B_R COLON Type IS Body END {
-        if (driver.pdebug) cout << "[PARSER]: routine " << $2 << " is declared\n";
+        if (shell.pdebug) cout << "[PARSER]: routine " << $2 << " is declared\n";
         program->routines.push_back(make_shared<Routine>($2));
-        driver.prompt();
+        shell.prompt();
     }
 ;
 
@@ -258,7 +317,7 @@ ParameterDeclaration :
     ID COLON Type
 ;
 
-Body : %empty
+Body : %empty { if (shell.pdebug) cout << "[PARSER]: EOF\n"; }
     | SimpleDeclaration SemicolonSeparator Body
     | Statement SemicolonSeparator Body
 ;
@@ -267,17 +326,38 @@ Statement : Assignment | RoutineCall | WhileLoop | ForLoop | IfStatement | Retur
 ;
 
 Assignment : ModifiablePrimary BECOMES Expression SEMICOLON {
-    if (driver.pdebug) cout << "[PARSER]: Assignment statement parsed\n";
+    if (shell.pdebug) cout << "[PARSER]: Assignment statement parsed\n";
+    auto var = $1;
+    auto exp = $3;
+    var->value = exp->value;
+    shell.prompt();
 }
 ;
 
+// Represents a variable name, an array element, or a record field
 ModifiablePrimary :
-    ID DOT ID { if (driver.pdebug) cout << "[PARSER]: access " << $3 << " from " << $1 << '\n'; }
-    | ID SB_L INT_EXP SB_R { if (driver.pdebug) cout << "[PARSER]: " << $1 << "[" << $3 << "]" << "\n"; }
-    | ID
+    ID DOT ID {
+        if (shell.pdebug) cout << "[PARSER]: access " << $3 << " from " << $1 << '\n';
+        // TODO: SemanticAnalyezer possible errors
+        // - $1 is not defined
+        // - $1 is not a record
+        // - $3 is not an element of $1
+        $$ = get<np<Record>>(program->types[$1]->dtype)->variables[$3];
+    }
+
+    | ID SB_L INT_EXP SB_R {
+        if (shell.pdebug) cout << "[PARSER]: " << $1 << "[" << $3 << "]" << "\n";
+        // TODO: return the node for the variable named $1[$3]
+    }
+
+    | ID {
+        if (shell.pdebug) cout << "[PARSER]: " << $1 << "\n";
+        // TODO: SemanticAnalyezer possible errors: $1 is not defined.
+        $$ = program->variables[$1];
+    }
 
 RoutineCall : ID B_L Expressions B_R SEMICOLON {
-    if (driver.pdebug) cout << "[PARSER]: routine call for " << $1 << " parsed\n";
+    if (shell.pdebug) cout << "[PARSER]: routine call for " << $1 << " parsed\n";
 }
 ;
 
@@ -286,16 +366,17 @@ Expressions :
 ;
 
 WhileLoop : WHILE Expression LOOP Body END {
-    if (driver.pdebug) cout << "[PARSER]: while loop parsed\n";
+    if (shell.pdebug) cout << "[PARSER]: while loop parsed\n";
 }
 ;
 
 ForLoop :
     FOR ID IN Range LOOP Body END {
-        if (driver.pdebug) cout << "[PARSER]: for loop parsed\n";
+        if (shell.pdebug) cout << "[PARSER]: for loop parsed\n";
+        
     }
     | FOR ID IN REVERSE Range LOOP Body END {
-        if (driver.pdebug) cout << "[PARSER]: reverse for loop parsed\n";
+        if (shell.pdebug) cout << "[PARSER]: reverse for loop parsed\n";
     }
 ;
 
@@ -305,16 +386,16 @@ Range :
 
 IfStatement :
     IF Expression THEN Body END {
-        if (driver.pdebug) cout << "[PARSER]: if statement parsed\n";
+        if (shell.pdebug) cout << "[PARSER]: if statement parsed\n";
     }
     | IF Expression THEN Body ELSE Body END {
-        if (driver.pdebug) cout << "[PARSER]: if-else statement parsed\n";
+        if (shell.pdebug) cout << "[PARSER]: if-else statement parsed\n";
     }
 ;
 
 ReturnStatement :
     RETURN ID SEMICOLON {
-        if (driver.pdebug) cout << "[PARSER]: return statement parsed\n";
+        if (shell.pdebug) cout << "[PARSER]: return statement parsed\n";
     }
 ;
 
@@ -325,18 +406,13 @@ ReturnStatement :
 // Future behaviour: program starts from "main" routine.
 // Other routines should only be stored and executed only upon call. 
 
+// TODO: Generalize to PRINT Expression
 PrintStatement :
-    PRINT ID SEMICOLON {
-        if (driver.pdebug) cout << "[PARSER]: print " << $2 << "\n";
-        for(auto u : program->variables) {
-            if(u->name == $2) {
-                cout << u->value << '\n';
-                break;
-            }
-        }
-        driver.prompt();
+    PRINT ModifiablePrimary SEMICOLON {
+        if (shell.pdebug) cout << "[PARSER]: print " << $2 << "\n";
+        cout << *($2->value) << '\n';
+        shell.prompt();
     }
-    | PRINT Expression SEMICOLON // TODO
     | PRINT RoutineCall SEMICOLON // TODO
 ;
 

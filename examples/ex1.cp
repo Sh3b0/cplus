@@ -1,41 +1,28 @@
-a.b := 1;
+var x is (1 + 1) * 2;
+print x;
 
-var x is 1;
-var y is 1.1;
-var z is true;
-var iv : integer;
-var rv : real;
-var bv : boolean;
-type int is integer;
-type bool is boolean;
-type double is real;
-var id : integer is 5;
+type point is record { var x : integer; var y : integer; } end;
+point.x := 1;
+point.y := 2;
 
-type Point2D is record { var x : integer; var y : integer; } end;
-type Tuple3D is array[3] integer;
-var numbers : array[3] integer;
+print point.x;
 
-routine test (a : integer, b : integer) : integer is
-    var result is 1;
-    
-    if 1 then 
-        a := 1;
-        while 1 loop
-            a := 1;
-        end
-        for i in 0 .. 4 loop
-            a := 1;
-        end
-    end
+var h is point.x + point.y;
+# var h is point.x + point.y + 1;
+print h;
 
-    for i in reverse 0 .. 4 loop
-        a := 1;
-    end
-    
-    print x;
+type tuple is array[3] integer;
+tuple[1] := 1;
+var res is tuple[1];
+print res;
 
-    return result;    
+
+routine max (a : integer, b : integer) : integer is
+    if a > b then
+        return a;
+    else
+        return b;
 end
 
-var id : integer is 5 + 5;
-var id is 5 + 5;
+var mx is max(5, 4);
+print mx;
