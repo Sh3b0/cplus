@@ -76,12 +76,24 @@ namespace ast
             if (*get<np<Primitive>>(this->dtype->dtype) == INTEGER && *get<np<Primitive>>(that->dtype->dtype) == INTEGER) {
                 return make_shared<Literal>(make_shared<TypeNode>(make_shared<Primitive>(INTEGER)), get<int>(this->value) + get<int>(that->value));
             }
+            if ((*get<np<Primitive>>(this->dtype->dtype) == INTEGER || *get<np<Primitive>>(this->dtype->dtype) == REAL) && 
+            (*get<np<Primitive>>(that->dtype->dtype) == INTEGER || *get<np<Primitive>>(that->dtype->dtype) == REAL)) {
+                auto v1 = (*get<np<Primitive>>(this->dtype->dtype) == INTEGER) ? get<int>(this->value) : get<double>(this->value);
+                auto v2 = (*get<np<Primitive>>(that->dtype->dtype) == INTEGER) ? get<int>(that->value) : get<double>(that->value);
+                return make_shared<Literal>(make_shared<TypeNode>(make_shared<Primitive>(REAL)), v1 + v2);
+            }
             // TODO: checks for other dtypes
             return nullptr;
         }
         np<Literal> sub(np<Literal> that) {
             if (*get<np<Primitive>>(this->dtype->dtype) == INTEGER && *get<np<Primitive>>(that->dtype->dtype) == INTEGER) {
                 return make_shared<Literal>(make_shared<TypeNode>(make_shared<Primitive>(INTEGER)), get<int>(this->value) - get<int>(that->value));
+            }
+            if ((*get<np<Primitive>>(this->dtype->dtype) == INTEGER || *get<np<Primitive>>(this->dtype->dtype) == REAL) && 
+            (*get<np<Primitive>>(that->dtype->dtype) == INTEGER || *get<np<Primitive>>(that->dtype->dtype) == REAL)) {
+                auto v1 = (*get<np<Primitive>>(this->dtype->dtype) == INTEGER) ? get<int>(this->value) : get<double>(this->value);
+                auto v2 = (*get<np<Primitive>>(that->dtype->dtype) == INTEGER) ? get<int>(that->value) : get<double>(that->value);
+                return make_shared<Literal>(make_shared<TypeNode>(make_shared<Primitive>(REAL)), v1 - v2);
             }
             // TODO: checks for other dtypes
             return nullptr;
@@ -90,12 +102,28 @@ namespace ast
             if (*get<np<Primitive>>(this->dtype->dtype) == INTEGER && *get<np<Primitive>>(that->dtype->dtype) == INTEGER) {
                 return make_shared<Literal>(make_shared<TypeNode>(make_shared<Primitive>(INTEGER)), get<int>(this->value) * get<int>(that->value));
             }
+            if ((*get<np<Primitive>>(this->dtype->dtype) == INTEGER || *get<np<Primitive>>(this->dtype->dtype) == REAL) && 
+            (*get<np<Primitive>>(that->dtype->dtype) == INTEGER || *get<np<Primitive>>(that->dtype->dtype) == REAL)) {
+                auto v1 = (*get<np<Primitive>>(this->dtype->dtype) == INTEGER) ? get<int>(this->value) : get<double>(this->value);
+                auto v2 = (*get<np<Primitive>>(that->dtype->dtype) == INTEGER) ? get<int>(that->value) : get<double>(that->value);
+                return make_shared<Literal>(make_shared<TypeNode>(make_shared<Primitive>(REAL)), v1 * v2);
+            }
             // TODO: checks for other dtypes
             return nullptr;
         }
         np<Literal> mod(np<Literal> that) {
             if (*get<np<Primitive>>(this->dtype->dtype) == INTEGER && *get<np<Primitive>>(that->dtype->dtype) == INTEGER) {
                 return make_shared<Literal>(make_shared<TypeNode>(make_shared<Primitive>(INTEGER)), get<int>(this->value) % get<int>(that->value));
+            }
+            // TODO: checks for other dtypes
+            return nullptr;
+        }
+        np<Literal> div(np<Literal> that) {
+            if ((*get<np<Primitive>>(this->dtype->dtype) == INTEGER || *get<np<Primitive>>(this->dtype->dtype) == REAL) && 
+            (*get<np<Primitive>>(that->dtype->dtype) == INTEGER || *get<np<Primitive>>(that->dtype->dtype) == REAL)) {
+                auto v1 = (*get<np<Primitive>>(this->dtype->dtype) == INTEGER) ? get<int>(this->value) : get<double>(this->value);
+                auto v2 = (*get<np<Primitive>>(that->dtype->dtype) == INTEGER) ? get<int>(that->value) : get<double>(that->value);
+                return make_shared<Literal>(make_shared<TypeNode>(make_shared<Primitive>(REAL)), v1 / v2);
             }
             // TODO: checks for other dtypes
             return nullptr;
