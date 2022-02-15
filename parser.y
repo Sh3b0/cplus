@@ -173,9 +173,18 @@ INT_EXP: INT_VAL{
         auto var = $1;
         $$ = var->add($3);
     }
-    /*| INT_EXP MINUS INT_EXP   { $$ = $1 - $3; }
-    | INT_EXP MUL INT_EXP     { $$ = $1 * $3; }
-    | INT_EXP MOD INT_EXP     { $$ = $1 % $3; }*/
+    | INT_EXP MINUS INT_EXP   { 
+        auto var = $1;
+        $$ = var->sub($3);
+    }
+    | INT_EXP MUL INT_EXP     { 
+        auto var = $1;
+        $$ = var->mul($3);
+    }
+    | INT_EXP MOD INT_EXP     { 
+        auto var = $1;
+        $$ = var->mod($3);
+    }
 ;
 
 REAL_EXP: REAL_VAL  { 

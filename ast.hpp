@@ -79,6 +79,27 @@ namespace ast
             // TODO: checks for other dtypes
             return nullptr;
         }
+        np<Literal> sub(np<Literal> that) {
+            if (*get<np<Primitive>>(this->dtype->dtype) == INTEGER && *get<np<Primitive>>(that->dtype->dtype) == INTEGER) {
+                return make_shared<Literal>(make_shared<TypeNode>(make_shared<Primitive>(INTEGER)), get<int>(this->value) - get<int>(that->value));
+            }
+            // TODO: checks for other dtypes
+            return nullptr;
+        }
+        np<Literal> mul(np<Literal> that) {
+            if (*get<np<Primitive>>(this->dtype->dtype) == INTEGER && *get<np<Primitive>>(that->dtype->dtype) == INTEGER) {
+                return make_shared<Literal>(make_shared<TypeNode>(make_shared<Primitive>(INTEGER)), get<int>(this->value) * get<int>(that->value));
+            }
+            // TODO: checks for other dtypes
+            return nullptr;
+        }
+        np<Literal> mod(np<Literal> that) {
+            if (*get<np<Primitive>>(this->dtype->dtype) == INTEGER && *get<np<Primitive>>(that->dtype->dtype) == INTEGER) {
+                return make_shared<Literal>(make_shared<TypeNode>(make_shared<Primitive>(INTEGER)), get<int>(this->value) % get<int>(that->value));
+            }
+            // TODO: checks for other dtypes
+            return nullptr;
+        }
 
         friend ostream& operator<< (ostream& stream, const Literal& literal) {
             std::visit([&](auto&& arg){stream << arg;}, literal.value);
