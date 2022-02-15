@@ -28,15 +28,18 @@
 %type <std::string> ID
 
 // TODO: make them literals
-%type <int> INT_VAL INT_EXP
-%type <double> REAL_VAL REAL_EXP
-%type <bool> BOOL_VAL BOOL_EXP
+%type <int> INT_VAL
+%type <ast::np<ast::Literal>> INT_EXP
+%type <double> REAL_VAL
+%type <ast::np<ast::Literal>> REAL_EXP
+%type <bool> BOOL_VAL
+%type <ast::np<ast::Literal>> BOOL_EXP
 
 %type <ast::np<ast::Variable> > VariableDeclaration ModifiablePrimary ParameterDeclaration
 %type <std::map<std::string, ast::np<ast::Variable> > > VariableDeclarations Parameters
 %type <ast::np<ast::ExpressionNode> > Expression
 %type <ast::np<ast::TypeNode> > Type PrimitiveType UserType ArrayType RecordType TypeDeclaration
-%type <ast::np<ast::Literal> > ModifiablePrimaryEq
+%type <ast::np<ast::Literal>> ModifiablePrimaryEq
 
 %left COMMA
 %right BECOMES
@@ -132,15 +135,15 @@ VariableDeclaration:
 Expression :
     INT_EXP {
         auto type = make_shared<TypeNode>(make_shared<Primitive>(ast::INTEGER));
-        $$ = make_shared<ExpressionNode>(type, make_shared<Literal>(type, $1));
+        $$ = make_shared<ExpressionNode>(type, $1);
     }
     | REAL_EXP {
         auto type = make_shared<TypeNode>(make_shared<Primitive>(ast::REAL));
-        $$ = make_shared<ExpressionNode>(type, make_shared<Literal>(type, $1));
+        $$ = make_shared<ExpressionNode>(type, $1);
     }
     | BOOL_EXP {
         auto type = make_shared<TypeNode>(make_shared<Primitive>(ast::BOOLEAN));
-        $$ = make_shared<ExpressionNode>(type, make_shared<Literal>(type, $1));
+        $$ = make_shared<ExpressionNode>(type, $1);
     }
     | ModifiablePrimaryEq {
         $$ = make_shared<ExpressionNode>($1->dtype, $1);
@@ -161,16 +164,25 @@ ModifiablePrimaryEq :
     // TODO: Add more rules for MINUS, MUL, DIV, MOD, EQ, NEQ, LT, GT, LEQ, GEQ, AND, OR, XOR, NOT 
 
 // TODO: implement the same functionality in a shorter/smarter way
-INT_EXP: INT_VAL              { $$ = $1; }
-    | B_L INT_EXP B_R         { $$ = $2; }
-    | INT_EXP PLUS INT_EXP    { $$ = $1 + $3; }
-    | INT_EXP MINUS INT_EXP   { $$ = $1 - $3; }
+INT_EXP: INT_VAL{ 
+        auto type = make_shared<TypeNode>(make_shared<Primitive>(ast::INTEGER));
+        $$ = make_shared<Literal>(type, $1); 
+    }
+    //| B_L INT_EXP B_R         { $$ = $2; }
+    | INT_EXP PLUS INT_EXP    { 
+        auto var = $1;
+        $$ = var->add($3);
+    }
+    /*| INT_EXP MINUS INT_EXP   { $$ = $1 - $3; }
     | INT_EXP MUL INT_EXP     { $$ = $1 * $3; }
-    | INT_EXP MOD INT_EXP     { $$ = $1 % $3; }
+    | INT_EXP MOD INT_EXP     { $$ = $1 % $3; }*/
 ;
 
-REAL_EXP: REAL_VAL               { $$ = $1; }
-    | B_L REAL_EXP B_R           { $$ = $2; }
+REAL_EXP: REAL_VAL  { 
+        auto type = make_shared<TypeNode>(make_shared<Primitive>(ast::REAL));
+        $$ = make_shared<Literal>(type, $1); 
+    }
+    /*| B_L REAL_EXP B_R           { $$ = $2; }
     
     // real real
     | REAL_EXP PLUS REAL_EXP     { $$ = $1 + $3; }
@@ -191,11 +203,14 @@ REAL_EXP: REAL_VAL               { $$ = $1; }
     | REAL_EXP DIV INT_EXP       { $$ = $1 / $3; }
 
     // int int
-    | INT_EXP DIV INT_EXP        { $$ = $1 / (double)$3; }
+    | INT_EXP DIV INT_EXP        { $$ = $1 / (double)$3; }*/
 ;
 
-BOOL_EXP : BOOL_VAL          { $$ = $1; }
-    | B_L BOOL_EXP B_R       { $$ = $2; }
+BOOL_EXP : BOOL_VAL {
+        auto type = make_shared<TypeNode>(make_shared<Primitive>(ast::BOOLEAN));
+        $$ = make_shared<Literal>(type, $1); 
+    }
+    /*| B_L BOOL_EXP B_R       { $$ = $2; }
     
     // bool bool
     | BOOL_EXP AND BOOL_EXP  { $$ = $1 && $3; }
@@ -233,7 +248,7 @@ BOOL_EXP : BOOL_VAL          { $$ = $1; }
     | INT_EXP GT REAL_EXP    { $$ = $1 > $3; }
     | INT_EXP GEQ REAL_EXP   { $$ = $1 >= $3; }
     | INT_EXP EQ REAL_EXP    { $$ = ($1 == $3); }
-    | INT_EXP NEQ REAL_EXP   { $$ = ($1 != $3); }
+    | INT_EXP NEQ REAL_EXP   { $$ = ($1 != $3); }*/
 ;
 
 
@@ -266,7 +281,7 @@ UserType : ArrayType | RecordType
 ;
 
 ArrayType : ARRAY SB_L INT_EXP SB_R Type {
-    $$ = make_shared<TypeNode>(make_shared<Array>($3, $5));
+    $$ = make_shared<TypeNode>(make_shared<Array>(get<int>($3->value), $5));
 }
 ;
 
@@ -352,7 +367,7 @@ ModifiablePrimary :
         // TODO: SemanticAnalyzer possible errors
         // - $1 is not subscriptable
         // - Array index out of range
-        $$ = get<np<Array>>(program->types[$1]->dtype)->data[$3-1];
+        $$ = get<np<Array>>(program->types[$1]->dtype)->data[get<int>($3->value)-1];
     }
 
     | ID {
