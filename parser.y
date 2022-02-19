@@ -215,16 +215,28 @@ BOOL_EXP : BOOL_VAL {
         auto type = make_shared<TypeNode>(make_shared<Primitive>(ast::BOOLEAN));
         $$ = make_shared<Literal>(type, $1); 
     }
-    /*| B_L BOOL_EXP B_R       { $$ = $2; }
+    | B_L BOOL_EXP B_R       { $$ = $2; }
     
     // bool bool
-    | BOOL_EXP AND BOOL_EXP  { $$ = $1 && $3; }
-    | BOOL_EXP OR BOOL_EXP   { $$ = $1 || $3; }
-    | BOOL_EXP XOR BOOL_EXP  { $$ = $1 != $3; }
-    | NOT BOOL_EXP           { $$ = !($2); }
+    | BOOL_EXP AND BOOL_EXP  { 
+        auto var = $1;
+        $$ = var->andOp($3);
+    }
+    | BOOL_EXP OR BOOL_EXP   { 
+        auto var = $1;
+        $$ = var->orOp($3);
+    }
+    | BOOL_EXP XOR BOOL_EXP  { 
+        auto var = $1;
+        $$ = var->xorOp($3);
+    }
+    | NOT BOOL_EXP           { 
+        auto var = $2;
+        $$ = var->notOp();
+    }
 
     // int int
-    | INT_EXP LT INT_EXP     { $$ = $1 < $3; }
+   /* | INT_EXP LT INT_EXP     { $$ = $1 < $3; }
     | INT_EXP LEQ INT_EXP    { $$ = $1 <= $3; }
     | INT_EXP GT INT_EXP     { $$ = $1 > $3; }
     | INT_EXP GEQ INT_EXP    { $$ = $1 >= $3; }
