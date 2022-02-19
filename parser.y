@@ -137,16 +137,16 @@ Expression :
         auto type = make_shared<TypeNode>(make_shared<Primitive>(ast::INTEGER));
         $$ = make_shared<ExpressionNode>(type, $1);
     }
-    | REAL_EXP {
-        auto type = make_shared<TypeNode>(make_shared<Primitive>(ast::REAL));
-        $$ = make_shared<ExpressionNode>(type, $1);
-    }
     | BOOL_EXP {
         auto type = make_shared<TypeNode>(make_shared<Primitive>(ast::BOOLEAN));
         $$ = make_shared<ExpressionNode>(type, $1);
     }
     | ModifiablePrimaryEq {
         $$ = make_shared<ExpressionNode>($1->dtype, $1);
+    }
+    | REAL_EXP {
+        auto type = make_shared<TypeNode>(make_shared<Primitive>(ast::REAL));
+        $$ = make_shared<ExpressionNode>(type, $1);
     }
 ;
 
@@ -168,7 +168,7 @@ INT_EXP: INT_VAL{
         auto type = make_shared<TypeNode>(make_shared<Primitive>(ast::INTEGER));
         $$ = make_shared<Literal>(type, $1); 
     }
-    //| B_L INT_EXP B_R         { $$ = $2; }
+    | B_L INT_EXP B_R         { $$ = $2; }
     | INT_EXP PLUS INT_EXP    { 
         auto var = $1;
         $$ = var->add($3);
@@ -191,28 +191,24 @@ REAL_EXP: REAL_VAL  {
         auto type = make_shared<TypeNode>(make_shared<Primitive>(ast::REAL));
         $$ = make_shared<Literal>(type, $1); 
     }
-    /*| B_L REAL_EXP B_R           { $$ = $2; }
+    | B_L REAL_EXP B_R           { $$ = $2; }
     
-    // real real
-    | REAL_EXP PLUS REAL_EXP     { $$ = $1 + $3; }
-    | REAL_EXP MINUS REAL_EXP    { $$ = $1 - $3; }
-    | REAL_EXP MUL REAL_EXP      { $$ = $1 * $3; }
-    | REAL_EXP DIV REAL_EXP      { $$ = $1 / $3; }
-
-    // int real
-    | INT_EXP PLUS REAL_EXP      { $$ = $1 + $3; }
-    | INT_EXP MINUS REAL_EXP     { $$ = $1 - $3; }
-    | INT_EXP MUL REAL_EXP       { $$ = $1 * $3; }
-    | INT_EXP DIV REAL_EXP       { $$ = $1 / $3; }
-
-    // real int
-    | REAL_EXP PLUS INT_EXP      { $$ = $1 + $3; }
-    | REAL_EXP MINUS INT_EXP     { $$ = $1 - $3; }
-    | REAL_EXP MUL INT_EXP       { $$ = $1 * $3; }
-    | REAL_EXP DIV INT_EXP       { $$ = $1 / $3; }
-
-    // int int
-    | INT_EXP DIV INT_EXP        { $$ = $1 / (double)$3; }*/
+    | Expression PLUS Expression     { 
+        auto var = $1->value;
+        $$ = var->add($3->value);
+    }
+    | Expression MINUS Expression    { 
+        auto var = $1->value;
+        $$ = var->sub($3->value);
+    }
+    | Expression MUL Expression      { 
+        auto var = $1->value;
+        $$ = var->mul($3->value);
+    }
+    | Expression DIV Expression      { 
+        auto var = $1->value;
+        $$ = var->div($3->value);
+    }
 ;
 
 BOOL_EXP : BOOL_VAL {
