@@ -235,37 +235,30 @@ BOOL_EXP : BOOL_VAL {
         $$ = var->notOp();
     }
 
-    // int int
-   /* | INT_EXP LT INT_EXP     { $$ = $1 < $3; }
-    | INT_EXP LEQ INT_EXP    { $$ = $1 <= $3; }
-    | INT_EXP GT INT_EXP     { $$ = $1 > $3; }
-    | INT_EXP GEQ INT_EXP    { $$ = $1 >= $3; }
-    | INT_EXP EQ INT_EXP     { $$ = ($1 == $3); }
-    | INT_EXP NEQ INT_EXP    { $$ = ($1 != $3); }
-
-    // real real
-    | REAL_EXP LT REAL_EXP   { $$ = $1 < $3; }
-    | REAL_EXP LEQ REAL_EXP  { $$ = $1 <= $3; }
-    | REAL_EXP GT REAL_EXP   { $$ = $1 > $3; }
-    | REAL_EXP GEQ REAL_EXP  { $$ = $1 >= $3; }
-    | REAL_EXP EQ REAL_EXP   { $$ = ($1 == $3); }
-    | REAL_EXP NEQ REAL_EXP  { $$ = ($1 != $3); }
-
-    // real integer
-    | REAL_EXP LT INT_EXP    { $$ = $1 < $3; }
-    | REAL_EXP LEQ INT_EXP   { $$ = $1 <= $3; }
-    | REAL_EXP GT INT_EXP    { $$ = $1 > $3; }
-    | REAL_EXP GEQ INT_EXP   { $$ = $1 >= $3; }
-    | REAL_EXP EQ INT_EXP    { $$ = ($1 == $3); }
-    | REAL_EXP NEQ INT_EXP   { $$ = ($1 != $3); }
-
-    // integer real
-    | INT_EXP LT REAL_EXP    { $$ = $1 < $3; }
-    | INT_EXP LEQ REAL_EXP   { $$ = $1 <= $3; }
-    | INT_EXP GT REAL_EXP    { $$ = $1 > $3; }
-    | INT_EXP GEQ REAL_EXP   { $$ = $1 >= $3; }
-    | INT_EXP EQ REAL_EXP    { $$ = ($1 == $3); }
-    | INT_EXP NEQ REAL_EXP   { $$ = ($1 != $3); }*/
+    | Expression LT Expression     { 
+        auto var = $1->value;
+        $$ = var->lt($3->value);
+    }
+    | Expression LEQ Expression    { 
+        auto var = $1->value;
+        $$ = var->leq($3->value);
+    }
+    | Expression GT Expression     { 
+        auto var = $1->value;
+        $$ = var->gt($3->value);
+    }
+    | Expression GEQ Expression    { 
+        auto var = $1->value;
+        $$ = var->geq($3->value);
+    }
+    | Expression EQ Expression     { 
+        auto var = $1->value;
+        $$ = var->eq($3->value);
+    }
+    | Expression NEQ Expression    { 
+        auto var = $1->value;
+        $$ = var->neq($3->value);
+    }
 ;
 
 

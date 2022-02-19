@@ -134,7 +134,6 @@ namespace ast
 
             Boolean
             
-
         */
         np<Literal> andOp(np<Literal> that) {
             if (*get<np<Primitive>>(this->dtype->dtype) == BOOLEAN && *get<np<Primitive>>(that->dtype->dtype) == BOOLEAN) {
@@ -160,6 +159,73 @@ namespace ast
             }
             return nullptr;
         }
+
+        /*
+
+            Compartive
+            
+        */
+        np<Literal> lt(np<Literal> that) {
+            auto v1_t = *get<np<Primitive>>(this->dtype->dtype);
+            auto v1 = (v1_t == INTEGER) ? get<int>(this->value) : ((v1_t == REAL) ? get<double>(this->value) : get<bool>(this->value));
+
+            auto v2_t = *get<np<Primitive>>(that->dtype->dtype);
+            auto v2 = (v2_t == INTEGER) ? get<int>(that->value) : ((v2_t == REAL) ? get<double>(that->value) : get<bool>(that->value));
+
+            auto type = make_shared<TypeNode>(make_shared<Primitive>(ast::BOOLEAN));
+            return make_shared<Literal>(type, (v1 < v2)); 
+        }
+        np<Literal> leq(np<Literal> that) {
+            auto v1_t = *get<np<Primitive>>(this->dtype->dtype);
+            auto v1 = (v1_t == INTEGER) ? get<int>(this->value) : ((v1_t == REAL) ? get<double>(this->value) : get<bool>(this->value));
+
+            auto v2_t = *get<np<Primitive>>(that->dtype->dtype);
+            auto v2 = (v2_t == INTEGER) ? get<int>(that->value) : ((v2_t == REAL) ? get<double>(that->value) : get<bool>(that->value));
+
+            auto type = make_shared<TypeNode>(make_shared<Primitive>(ast::BOOLEAN));
+            return make_shared<Literal>(type, (v1 <= v2)); 
+        }
+        np<Literal> gt(np<Literal> that) {
+            auto v1_t = *get<np<Primitive>>(this->dtype->dtype);
+            auto v1 = (v1_t == INTEGER) ? get<int>(this->value) : ((v1_t == REAL) ? get<double>(this->value) : get<bool>(this->value));
+
+            auto v2_t = *get<np<Primitive>>(that->dtype->dtype);
+            auto v2 = (v2_t == INTEGER) ? get<int>(that->value) : ((v2_t == REAL) ? get<double>(that->value) : get<bool>(that->value));
+
+            auto type = make_shared<TypeNode>(make_shared<Primitive>(ast::BOOLEAN));
+            return make_shared<Literal>(type, (v1 > v2)); 
+        }
+        np<Literal> geq(np<Literal> that) {
+            auto v1_t = *get<np<Primitive>>(this->dtype->dtype);
+            auto v1 = (v1_t == INTEGER) ? get<int>(this->value) : ((v1_t == REAL) ? get<double>(this->value) : get<bool>(this->value));
+
+            auto v2_t = *get<np<Primitive>>(that->dtype->dtype);
+            auto v2 = (v2_t == INTEGER) ? get<int>(that->value) : ((v2_t == REAL) ? get<double>(that->value) : get<bool>(that->value));
+
+            auto type = make_shared<TypeNode>(make_shared<Primitive>(ast::BOOLEAN));
+            return make_shared<Literal>(type, (v1 >= v2)); 
+        }
+        np<Literal> eq(np<Literal> that) {
+            auto v1_t = *get<np<Primitive>>(this->dtype->dtype);
+            auto v1 = (v1_t == INTEGER) ? get<int>(this->value) : ((v1_t == REAL) ? get<double>(this->value) : get<bool>(this->value));
+
+            auto v2_t = *get<np<Primitive>>(that->dtype->dtype);
+            auto v2 = (v2_t == INTEGER) ? get<int>(that->value) : ((v2_t == REAL) ? get<double>(that->value) : get<bool>(that->value));
+
+            auto type = make_shared<TypeNode>(make_shared<Primitive>(ast::BOOLEAN));
+            return make_shared<Literal>(type, (v1 == v2)); 
+        }
+        np<Literal> neq(np<Literal> that) {
+            auto v1_t = *get<np<Primitive>>(this->dtype->dtype);
+            auto v1 = (v1_t == INTEGER) ? get<int>(this->value) : ((v1_t == REAL) ? get<double>(this->value) : get<bool>(this->value));
+
+            auto v2_t = *get<np<Primitive>>(that->dtype->dtype);
+            auto v2 = (v2_t == INTEGER) ? get<int>(that->value) : ((v2_t == REAL) ? get<double>(that->value) : get<bool>(that->value));
+
+            auto type = make_shared<TypeNode>(make_shared<Primitive>(ast::BOOLEAN));
+            return make_shared<Literal>(type, (v1 != v2)); 
+        }
+
 
         friend ostream& operator<< (ostream& stream, const Literal& literal) {
             std::visit([&](auto&& arg){stream << arg;}, literal.value);
