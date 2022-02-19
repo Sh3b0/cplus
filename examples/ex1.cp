@@ -7,8 +7,8 @@ point.y := 2;
 
 print point.x;
 
-var h is point.x + point.y;
-# var h is point.x + point.y + 1;
+# var h is point.x + point.y;
+var h is point.x + point.y + 1;
 print h;
 
 type tuple is array[3] integer;

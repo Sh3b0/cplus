@@ -141,12 +141,12 @@ Expression :
         auto type = make_shared<TypeNode>(make_shared<Primitive>(ast::BOOLEAN));
         $$ = make_shared<ExpressionNode>(type, $1);
     }
-    | ModifiablePrimaryEq {
-        $$ = make_shared<ExpressionNode>($1->dtype, $1);
-    }
     | REAL_EXP {
         auto type = make_shared<TypeNode>(make_shared<Primitive>(ast::REAL));
         $$ = make_shared<ExpressionNode>(type, $1);
+    }
+    | ModifiablePrimaryEq {
+        $$ = make_shared<ExpressionNode>($1->dtype, $1);
     }
 ;
 
@@ -156,10 +156,47 @@ ModifiablePrimaryEq :
         auto var = $1;
         $$ = var->value;
     }
-    | ModifiablePrimary PLUS ModifiablePrimaryEq {
-        auto var = $1;
-        $$ = var->value->add($3);
+    | ModifiablePrimary PLUS Expression     { 
+        auto var = $1->value;
+        $$ = var->add($3->value);
     }
+    | ModifiablePrimary MINUS Expression    { 
+        auto var = $1->value;
+        $$ = var->sub($3->value);
+    }
+    | ModifiablePrimary MUL Expression      { 
+        auto var = $1->value;
+        $$ = var->mul($3->value);
+    }
+    | ModifiablePrimary DIV Expression      { 
+        auto var = $1->value;
+        $$ = var->div($3->value);
+    }
+    | ModifiablePrimary MOD Expression      { 
+        auto var = $1->value;
+        $$ = var->mod($3->value);
+    }
+    
+    /*| Expression PLUS ModifiablePrimary     { 
+        auto var = $1->value;
+        $$ = var->add($3->value);
+    }
+    | Expression MINUS ModifiablePrimary    { 
+        auto var = $1->value;
+        $$ = var->sub($3->value);
+    }
+    | Expression MUL ModifiablePrimary      { 
+        auto var = $1->value;
+        $$ = var->mul($3->value);
+    }
+    | Expression DIV ModifiablePrimary      { 
+        auto var = $1->value;
+        $$ = var->div($3->value);
+    }
+    | Expression MOD ModifiablePrimary      { 
+        auto var = $1->value;
+        $$ = var->mod($3->value);
+    }*/
     
     // TODO: Add more rules for MINUS, MUL, DIV, MOD, EQ, NEQ, LT, GT, LEQ, GEQ, AND, OR, XOR, NOT 
 
