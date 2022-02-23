@@ -11,11 +11,11 @@ shell s;
 int main(int argc, char **argv)
 {
     if (s.parse_args(argc, argv)) {
-        cout << "Error parsing arguments\n";
+        cout << "Error while parsing arguments\n";
         return 1;
     }
     if (s.parse_program()) {
-        cout << "Error parsing program\n";
+        cout << "Error while parsing program\n";
         return 1;
     }
 

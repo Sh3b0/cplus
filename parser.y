@@ -35,8 +35,10 @@
 %type <ast::np<ast::Variable> > VariableDeclaration ModifiablePrimary ParameterDeclaration
 %type <std::map<std::string, ast::np<ast::Variable> > > VariableDeclarations Parameters
 %type <ast::np<ast::ExpressionNode> > Expression
+%type <std::vector<ast::np<ast::ExpressionNode>>> Expressions
 %type <ast::np<ast::TypeNode> > Type PrimitiveType UserType ArrayType RecordType TypeDeclaration
 %type <ast::np<ast::Literal> > ModifiablePrimaryEq
+
 
 %left COMMA
 %right BECOMES
@@ -71,6 +73,8 @@
     #include "lexer.h"
     #include "parser.hpp"
     #include "shell.hpp"
+    #include "sa.hpp"
+
     static cplus::parser::symbol_type yylex(cplus::lexer &lexer, cplus::shell &shell) {
         return lexer.get_next_token();
     }
@@ -79,6 +83,7 @@
     using namespace ast;
     
     np<Program> program = make_shared<Program>();  // Points to the whole program node.
+    sa semantic_analyzer;
 }
 
 
@@ -341,36 +346,50 @@ Assignment : ModifiablePrimary BECOMES Expression SEMICOLON {
 // Represents a variable name, an array element, or a record field
 ModifiablePrimary :
     ID DOT ID {
-        // TODO: SemanticAnalyezer possible errors
-        // - $1 is not defined
-        // - $1 is not a record
-        // - $3 is not an element of $1
+        if(!semantic_analyzer.checkRecordAccess($1, $3)){
+            error("Semantic error");
+            return 1;
+        }
         $$ = get<np<Record>>(program->types[$1]->dtype)->variables[$3];
     }
 
     | ID SB_L INT_EXP SB_R {
-        // TODO: SemanticAnalyzer possible errors
-        // - $1 is not subscriptable
-        // - Array index out of range
+        if(!semantic_analyzer.checkArrayAccess($1, $3)){
+            error("Semantic error");
+            return 1;
+        }
         $$ = get<np<Array>>(program->types[$1]->dtype)->data[$3-1];
     }
 
     | ID {
-        // TODO: SemanticAnalyezer possible errors: $1 is not defined.
+        if(!semantic_analyzer.checkVariableAccess($1)){
+            error("Semantic error");
+            return 1;
+        }
         $$ = program->variables[$1];
     }
 
 RoutineCall : ID B_L Expressions B_R SEMICOLON {
     if (shell.pdebug) cout << "[PARSER]: routine call for " << $1 << " parsed\n";
-    // TODO SemanticAnalyezer possible errors:
-    // - $1 is not callable
-    // - Argument type mismatch
-    // - Arity mismatch
+    auto exps = $3;
+    if(!semantic_analyzer.checkRoutineCall($1, $3.size())){
+        error("Semantic error");
+        return 1;
+    }
 }
 ;
 
 Expressions :
-    %empty | Expression CommaSeparator Expressions
+    %empty {
+        vector<np<ExpressionNode> > tmp;
+        $$ = tmp;
+    }
+    | Expression CommaSeparator Expressions {
+        auto exp = $1;
+        auto exps = $3;
+        exps.push_back(exp);
+        $$ = exps;
+    }
 ;
 
 IfStatement :
