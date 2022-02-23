@@ -72,13 +72,160 @@ namespace ast
             this->value = value;
         }
 
+
+        /*
+
+            Arithmatics
+
+        */
         np<Literal> add(np<Literal> that) {
             if (*get<np<Primitive>>(this->dtype->dtype) == INTEGER && *get<np<Primitive>>(that->dtype->dtype) == INTEGER) {
                 return make_shared<Literal>(make_shared<TypeNode>(make_shared<Primitive>(INTEGER)), get<int>(this->value) + get<int>(that->value));
             }
-            // TODO: checks for other dtypes
+            if ((*get<np<Primitive>>(this->dtype->dtype) == INTEGER || *get<np<Primitive>>(this->dtype->dtype) == REAL) && 
+            (*get<np<Primitive>>(that->dtype->dtype) == INTEGER || *get<np<Primitive>>(that->dtype->dtype) == REAL)) {
+                auto v1 = (*get<np<Primitive>>(this->dtype->dtype) == INTEGER) ? get<int>(this->value) : get<double>(this->value);
+                auto v2 = (*get<np<Primitive>>(that->dtype->dtype) == INTEGER) ? get<int>(that->value) : get<double>(that->value);
+                return make_shared<Literal>(make_shared<TypeNode>(make_shared<Primitive>(REAL)), v1 + v2);
+            }
             return nullptr;
         }
+        np<Literal> sub(np<Literal> that) {
+            if (*get<np<Primitive>>(this->dtype->dtype) == INTEGER && *get<np<Primitive>>(that->dtype->dtype) == INTEGER) {
+                return make_shared<Literal>(make_shared<TypeNode>(make_shared<Primitive>(INTEGER)), get<int>(this->value) - get<int>(that->value));
+            }
+            if ((*get<np<Primitive>>(this->dtype->dtype) == INTEGER || *get<np<Primitive>>(this->dtype->dtype) == REAL) && 
+            (*get<np<Primitive>>(that->dtype->dtype) == INTEGER || *get<np<Primitive>>(that->dtype->dtype) == REAL)) {
+                auto v1 = (*get<np<Primitive>>(this->dtype->dtype) == INTEGER) ? get<int>(this->value) : get<double>(this->value);
+                auto v2 = (*get<np<Primitive>>(that->dtype->dtype) == INTEGER) ? get<int>(that->value) : get<double>(that->value);
+                return make_shared<Literal>(make_shared<TypeNode>(make_shared<Primitive>(REAL)), v1 - v2);
+            }
+            return nullptr;
+        }
+        np<Literal> mul(np<Literal> that) {
+            if (*get<np<Primitive>>(this->dtype->dtype) == INTEGER && *get<np<Primitive>>(that->dtype->dtype) == INTEGER) {
+                return make_shared<Literal>(make_shared<TypeNode>(make_shared<Primitive>(INTEGER)), get<int>(this->value) * get<int>(that->value));
+            }
+            if ((*get<np<Primitive>>(this->dtype->dtype) == INTEGER || *get<np<Primitive>>(this->dtype->dtype) == REAL) && 
+            (*get<np<Primitive>>(that->dtype->dtype) == INTEGER || *get<np<Primitive>>(that->dtype->dtype) == REAL)) {
+                auto v1 = (*get<np<Primitive>>(this->dtype->dtype) == INTEGER) ? get<int>(this->value) : get<double>(this->value);
+                auto v2 = (*get<np<Primitive>>(that->dtype->dtype) == INTEGER) ? get<int>(that->value) : get<double>(that->value);
+                return make_shared<Literal>(make_shared<TypeNode>(make_shared<Primitive>(REAL)), v1 * v2);
+            }
+            return nullptr;
+        }
+        np<Literal> mod(np<Literal> that) {
+            if (*get<np<Primitive>>(this->dtype->dtype) == INTEGER && *get<np<Primitive>>(that->dtype->dtype) == INTEGER) {
+                return make_shared<Literal>(make_shared<TypeNode>(make_shared<Primitive>(INTEGER)), get<int>(this->value) % get<int>(that->value));
+            }
+            return nullptr;
+        }
+        np<Literal> div(np<Literal> that) {
+            if ((*get<np<Primitive>>(this->dtype->dtype) == INTEGER || *get<np<Primitive>>(this->dtype->dtype) == REAL) && 
+            (*get<np<Primitive>>(that->dtype->dtype) == INTEGER || *get<np<Primitive>>(that->dtype->dtype) == REAL)) {
+                auto v1 = (*get<np<Primitive>>(this->dtype->dtype) == INTEGER) ? get<int>(this->value) : get<double>(this->value);
+                auto v2 = (*get<np<Primitive>>(that->dtype->dtype) == INTEGER) ? get<int>(that->value) : get<double>(that->value);
+                return make_shared<Literal>(make_shared<TypeNode>(make_shared<Primitive>(REAL)), v1 / v2);
+            }
+            return nullptr;
+        }
+
+        /*
+
+            Boolean
+            
+        */
+        np<Literal> andOp(np<Literal> that) {
+            if (*get<np<Primitive>>(this->dtype->dtype) == BOOLEAN && *get<np<Primitive>>(that->dtype->dtype) == BOOLEAN) {
+                return make_shared<Literal>(make_shared<TypeNode>(make_shared<Primitive>(BOOLEAN)), get<bool>(this->value) && get<bool>(that->value));
+            }
+            return nullptr;
+        }
+        np<Literal> orOp(np<Literal> that) {
+            if (*get<np<Primitive>>(this->dtype->dtype) == BOOLEAN && *get<np<Primitive>>(that->dtype->dtype) == BOOLEAN) {
+                return make_shared<Literal>(make_shared<TypeNode>(make_shared<Primitive>(BOOLEAN)), get<bool>(this->value) || get<bool>(that->value));
+            }
+            return nullptr;
+        }
+        np<Literal> xorOp(np<Literal> that) {
+            if (*get<np<Primitive>>(this->dtype->dtype) == BOOLEAN && *get<np<Primitive>>(that->dtype->dtype) == BOOLEAN) {
+                return make_shared<Literal>(make_shared<TypeNode>(make_shared<Primitive>(BOOLEAN)), get<bool>(this->value) ^ get<bool>(that->value));
+            }
+            return nullptr;
+        }
+        np<Literal> notOp() {
+            if (*get<np<Primitive>>(this->dtype->dtype) == BOOLEAN) {
+                return make_shared<Literal>(make_shared<TypeNode>(make_shared<Primitive>(BOOLEAN)), !get<bool>(this->value));
+            }
+            return nullptr;
+        }
+
+        /*
+
+            Compartive
+            
+        */
+        np<Literal> lt(np<Literal> that) {
+            auto v1_t = *get<np<Primitive>>(this->dtype->dtype);
+            auto v1 = (v1_t == INTEGER) ? get<int>(this->value) : ((v1_t == REAL) ? get<double>(this->value) : get<bool>(this->value));
+
+            auto v2_t = *get<np<Primitive>>(that->dtype->dtype);
+            auto v2 = (v2_t == INTEGER) ? get<int>(that->value) : ((v2_t == REAL) ? get<double>(that->value) : get<bool>(that->value));
+
+            auto type = make_shared<TypeNode>(make_shared<Primitive>(ast::BOOLEAN));
+            return make_shared<Literal>(type, (v1 < v2)); 
+        }
+        np<Literal> leq(np<Literal> that) {
+            auto v1_t = *get<np<Primitive>>(this->dtype->dtype);
+            auto v1 = (v1_t == INTEGER) ? get<int>(this->value) : ((v1_t == REAL) ? get<double>(this->value) : get<bool>(this->value));
+
+            auto v2_t = *get<np<Primitive>>(that->dtype->dtype);
+            auto v2 = (v2_t == INTEGER) ? get<int>(that->value) : ((v2_t == REAL) ? get<double>(that->value) : get<bool>(that->value));
+
+            auto type = make_shared<TypeNode>(make_shared<Primitive>(ast::BOOLEAN));
+            return make_shared<Literal>(type, (v1 <= v2)); 
+        }
+        np<Literal> gt(np<Literal> that) {
+            auto v1_t = *get<np<Primitive>>(this->dtype->dtype);
+            auto v1 = (v1_t == INTEGER) ? get<int>(this->value) : ((v1_t == REAL) ? get<double>(this->value) : get<bool>(this->value));
+
+            auto v2_t = *get<np<Primitive>>(that->dtype->dtype);
+            auto v2 = (v2_t == INTEGER) ? get<int>(that->value) : ((v2_t == REAL) ? get<double>(that->value) : get<bool>(that->value));
+
+            auto type = make_shared<TypeNode>(make_shared<Primitive>(ast::BOOLEAN));
+            return make_shared<Literal>(type, (v1 > v2)); 
+        }
+        np<Literal> geq(np<Literal> that) {
+            auto v1_t = *get<np<Primitive>>(this->dtype->dtype);
+            auto v1 = (v1_t == INTEGER) ? get<int>(this->value) : ((v1_t == REAL) ? get<double>(this->value) : get<bool>(this->value));
+
+            auto v2_t = *get<np<Primitive>>(that->dtype->dtype);
+            auto v2 = (v2_t == INTEGER) ? get<int>(that->value) : ((v2_t == REAL) ? get<double>(that->value) : get<bool>(that->value));
+
+            auto type = make_shared<TypeNode>(make_shared<Primitive>(ast::BOOLEAN));
+            return make_shared<Literal>(type, (v1 >= v2)); 
+        }
+        np<Literal> eq(np<Literal> that) {
+            auto v1_t = *get<np<Primitive>>(this->dtype->dtype);
+            auto v1 = (v1_t == INTEGER) ? get<int>(this->value) : ((v1_t == REAL) ? get<double>(this->value) : get<bool>(this->value));
+
+            auto v2_t = *get<np<Primitive>>(that->dtype->dtype);
+            auto v2 = (v2_t == INTEGER) ? get<int>(that->value) : ((v2_t == REAL) ? get<double>(that->value) : get<bool>(that->value));
+
+            auto type = make_shared<TypeNode>(make_shared<Primitive>(ast::BOOLEAN));
+            return make_shared<Literal>(type, (v1 == v2)); 
+        }
+        np<Literal> neq(np<Literal> that) {
+            auto v1_t = *get<np<Primitive>>(this->dtype->dtype);
+            auto v1 = (v1_t == INTEGER) ? get<int>(this->value) : ((v1_t == REAL) ? get<double>(this->value) : get<bool>(this->value));
+
+            auto v2_t = *get<np<Primitive>>(that->dtype->dtype);
+            auto v2 = (v2_t == INTEGER) ? get<int>(that->value) : ((v2_t == REAL) ? get<double>(that->value) : get<bool>(that->value));
+
+            auto type = make_shared<TypeNode>(make_shared<Primitive>(ast::BOOLEAN));
+            return make_shared<Literal>(type, (v1 != v2)); 
+        }
+
 
         friend ostream& operator<< (ostream& stream, const Literal& literal) {
             std::visit([&](auto&& arg){stream << arg;}, literal.value);
