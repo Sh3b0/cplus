@@ -1,1 +1,0 @@
-type integer is integer;

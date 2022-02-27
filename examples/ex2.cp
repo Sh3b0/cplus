@@ -1,3 +1,11 @@
+type qword is integer;
+type float is real;
+type bit is boolean;
+type double is float;
+
+type time is record {var hour : integer; var minute : integer; } end;
+type duration is time;
+
 var i : integer is 1;
 var j is -3;
 var k : integer;

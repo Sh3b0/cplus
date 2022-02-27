@@ -1,12 +1,19 @@
+# IDE
 .vscode
 .idea
 
+# Build dirs
 Build
 build
 
+# Other
 lexer.cpp
 parser.hpp
 parser.cpp
 cplus
 parser.dot
 parser.output
+a.out
+ir.ll
+run.sh
+Makefile

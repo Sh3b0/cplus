@@ -1,25 +1,29 @@
+#include <iostream>
+
 #include "lexer.h"
 #include "parser.hpp"
 #include "shell.hpp"
-#include "memory"
+#include "llvm.hpp"
 
-using namespace cplus;
-using namespace std;
+extern cplus::shell shell;
+extern ast::np<ast::Program> program;
 
-shell s;
-
-int main(int argc, char **argv)
-{
-    if (s.parse_args(argc, argv)) {
-        cout << "Error parsing arguments\n";
+int main(int argc, char **argv) {
+    if (shell.parse_args(argc, argv)) {
+        std::cout << "Error parsing arguments\n";
         return 1;
     }
-    if (s.parse_program()) {
-        cout << "Error parsing program\n";
+    if (shell.parse_program()) {
+        std::cout << "Error parsing program\n";
         return 1;
     }
 
-    s.print_ast();
+    // s.print_ast();
 
+    IRGenerator gen;
+    program->accept(&gen);
+    gen.generate();
+    system("clang -x ir ir.ll -o a.out");
+    std::cout << "Compilation successful. Run ./a.out to execute\n";
     return 0;
 }

@@ -1,1 +1,0 @@
-var name : 34 is integer;
