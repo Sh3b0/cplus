@@ -16,11 +16,12 @@ public:
 
     bool interactive = true;
     bool debug = false;
-    std::ifstream file;
+    std::ifstream infile;
+    std::string outfile = "a.out";
 
     int parse_program();
     int parse_args(int argc, char **argv);
-    // int print_ast();
+    int print_ast();
     void readFrom(std::istream *is);
     void prompt();
     void init();

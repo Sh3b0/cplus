@@ -18,12 +18,15 @@ int main(int argc, char **argv) {
         return 1;
     }
 
-    // s.print_ast();
+    if(shell.debug) shell.print_ast();
 
     IRGenerator gen;
     program->accept(&gen);
     gen.generate();
-    system("clang -x ir ir.ll -o a.out");
-    std::cout << "Compilation successful. Run ./a.out to execute\n";
+
+    std::string cmd = "clang -x ir ir.ll -o " + shell.outfile;
+    system(cmd.c_str());
+    std::cout << "\nCompilation successful. Run ./" << shell.outfile << " to execute\n";
+    
     return 0;
 }
