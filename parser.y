@@ -32,7 +32,7 @@
 %type <ast::np<ast::VariableDeclaration>> VARIABLE_DECLARATION PARAMETER_DECLARATION
 %type <ast::np<ast::RoutineDeclaration>> ROUTINE_DECLARATION
 %type <std::vector<ast::np<ast::VariableDeclaration>>> PARAMETERS
-%type <ast::np<ast::Expression>> EXPRESSION INT_EXP REAL_EXP BOOL_EXP
+%type <ast::np<ast::Expression>> EXPRESSION INT_EXP REAL_EXP BOOL_EXP // ID_EQN
 %type <ast::np<ast::Type>> TYPE PRIMITIVE_TYPE
 %type <ast::np<ast::Body>> BODY
 %type <ast::np<ast::Statement>> STATEMENT
@@ -116,93 +116,98 @@ VARIABLE_DECLARATION:
 EXPRESSION :
     INT_EXP {
         if(shell.debug) std::cout << "[PARSER]: INT_EXP" << std::endl;
+        $1->dtype = std::make_shared<ast::IntType>();
         $$ = $1;
     }
     | REAL_EXP {
         if(shell.debug) std::cout << "[PARSER]: REAL_EXP" << std::endl;
+        $1->dtype = std::make_shared<ast::RealType>();
         $$ = $1;
     }
     | BOOL_EXP {
         if(shell.debug) std::cout << "[PARSER]: BOOL_EXP" << std::endl;
+        $1->dtype = std::make_shared<ast::BoolType>();
         $$ = $1;
     }
-    | ID { // TODO: generalize to MP_Eq
-        if(shell.debug) std::cout << "[PARSER]: ID" << std::endl;
+    | ID {
         $$ = std::make_shared<ast::Identifier>($1);
     }
 ;
 
+// Hey, if you can make the following EXP matching shorter/smarter without conflicts, submit a PR :)
+
 INT_EXP:
-    INT_VAL {
-        $$ = std::make_shared<ast::IntLiteral>($1);
-    }
-    | B_L INT_EXP B_R {
-        $$ = $2;
-    }
-    | INT_EXP PLUS INT_EXP {
-        $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::PLUS, $3);
-    }
-    | INT_EXP MINUS INT_EXP {
-        $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::MINUS, $3);
-    }
-    | INT_EXP MUL INT_EXP {
-        $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::MUL, $3);
-    }
-    | INT_EXP MOD INT_EXP {
-        $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::MOD, $3);
-    }
-    | INT_EXP DIV INT_EXP { // Integer division
-        $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::DIV, $3);
-    }
-    | MINUS INT_EXP {
-        $$ = std::make_shared<ast::UnaryExpression>(ast::OperatorEnum::MINUS, $2);
-    }
+    INT_VAL                    { $$ = std::make_shared<ast::IntLiteral>($1); }
+    | B_L INT_EXP B_R          { $$ = $2; }
+    | INT_EXP PLUS INT_EXP     { $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::PLUS, $3); }
+    | INT_EXP MINUS INT_EXP    { $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::MINUS, $3); }
+    | INT_EXP MUL INT_EXP      { $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::MUL, $3); }
+    | INT_EXP MOD INT_EXP      { $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::MOD, $3); }
+    | INT_EXP DIV INT_EXP      { $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::DIV, $3); }
+    | MINUS INT_EXP            { $$ = std::make_shared<ast::UnaryExpression>(ast::OperatorEnum::MINUS, $2); }
 ;
 
 REAL_EXP:
-    REAL_VAL {
-        $$ = std::make_shared<ast::RealLiteral>($1);
-    }
-    | B_L REAL_EXP B_R {
-        $$ = $2;
-    }
-    | REAL_EXP PLUS REAL_EXP {
-        $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::PLUS, $3);
-    }
-    | REAL_EXP MINUS REAL_EXP {
-        $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::MINUS, $3);
-    }
-    | REAL_EXP MUL REAL_EXP {
-        $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::MUL, $3);
-    }
-    | REAL_EXP DIV REAL_EXP {
-        $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::DIV, $3);
-    }
-    | MINUS REAL_EXP {
-        $$ = std::make_shared<ast::UnaryExpression>(ast::OperatorEnum::MINUS, $2);
-    }
+    REAL_VAL                   { $$ = std::make_shared<ast::RealLiteral>($1); }
+    | B_L REAL_EXP B_R         { $$ = $2; }
+    | REAL_EXP PLUS REAL_EXP   { $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::PLUS, $3); }
+    | INT_EXP PLUS REAL_EXP    { $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::PLUS, $3); }
+    | REAL_EXP PLUS INT_EXP    { $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::PLUS, $3); }
+
+    | REAL_EXP MINUS REAL_EXP  { $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::MINUS, $3); }
+    | INT_EXP MINUS REAL_EXP   { $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::MINUS, $3); }
+    | REAL_EXP MINUS INT_EXP   { $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::MINUS, $3); }
+
+    | REAL_EXP MUL REAL_EXP    { $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::MUL, $3); }
+    | INT_EXP MUL REAL_EXP     { $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::MUL, $3); }
+    | REAL_EXP MUL INT_EXP     { $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::MUL, $3); }
+
+    | REAL_EXP DIV REAL_EXP    { $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::DIV, $3); }
+    | INT_EXP DIV REAL_EXP     { $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::DIV, $3); }
+    | REAL_EXP DIV INT_EXP     { $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::DIV, $3); }
+
+    | MINUS REAL_EXP           { $$ = std::make_shared<ast::UnaryExpression>(ast::OperatorEnum::MINUS, $2); }
 ;
 
 BOOL_EXP:
-    BOOL_VAL {
-        $$ = std::make_shared<ast::BoolLiteral>($1);
-    }
-    | B_L BOOL_EXP B_R {
-        $$ = $2;
-    }
-    | BOOL_EXP AND BOOL_EXP {
-        $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::AND, $3);
-    }
-    | BOOL_EXP OR BOOL_EXP {
-        $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::OR, $3);
-    }
-    | BOOL_EXP XOR BOOL_EXP {
-        $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::XOR, $3);
-    }
-    | NOT BOOL_EXP {
-        $$ = std::make_shared<ast::UnaryExpression>(ast::OperatorEnum::NOT, $2);
-    }
+    BOOL_VAL                   { $$ = std::make_shared<ast::BoolLiteral>($1); }
+    | B_L BOOL_EXP B_R         { $$ = $2; }
+    | BOOL_EXP AND BOOL_EXP    { $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::AND, $3); }
+    | BOOL_EXP OR BOOL_EXP     { $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::OR, $3); }
+    | BOOL_EXP XOR BOOL_EXP    { $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::XOR, $3); }
+    | NOT BOOL_EXP             { $$ = std::make_shared<ast::UnaryExpression>(ast::OperatorEnum::NOT, $2); }
+
+    | INT_EXP EQ INT_EXP       { $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::EQ, $3); }
+    | REAL_EXP EQ REAL_EXP     { $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::EQ, $3); }
+    | INT_EXP EQ REAL_EXP      { $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::EQ, $3); }
+    | REAL_EXP EQ INT_EXP      { $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::EQ, $3); }
+
+    | INT_EXP NEQ INT_EXP      { $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::NEQ, $3); }
+    | REAL_EXP NEQ REAL_EXP    { $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::NEQ, $3); }
+    | INT_EXP NEQ REAL_EXP     { $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::NEQ, $3); }
+    | REAL_EXP NEQ INT_EXP     { $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::NEQ, $3); }
+
+    | INT_EXP LT INT_EXP       { $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::LT, $3); }
+    | REAL_EXP LT REAL_EXP     { $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::LT, $3); }
+    | INT_EXP LT REAL_EXP      { $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::LT, $3); }
+    | REAL_EXP LT INT_EXP      { $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::LT, $3); }
+
+    | INT_EXP GT INT_EXP       { $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::GT, $3); }
+    | REAL_EXP GT REAL_EXP     { $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::GT, $3); }
+    | INT_EXP GT REAL_EXP      { $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::GT, $3); }
+    | REAL_EXP GT INT_EXP      { $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::GT, $3); }
+
+    | INT_EXP LEQ INT_EXP      { $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::LEQ, $3); }
+    | REAL_EXP LEQ REAL_EXP    { $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::LEQ, $3); }
+    | INT_EXP LEQ REAL_EXP     { $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::LEQ, $3); }
+    | REAL_EXP LEQ INT_EXP     { $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::LEQ, $3); }
+
+    | INT_EXP GEQ INT_EXP      { $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::GEQ, $3); }
+    | REAL_EXP GEQ REAL_EXP    { $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::GEQ, $3); }
+    | INT_EXP GEQ REAL_EXP     { $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::GEQ, $3); }
+    | REAL_EXP GEQ INT_EXP     { $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::GEQ, $3); }
 ;
+
 
 TYPE :
     PRIMITIVE_TYPE

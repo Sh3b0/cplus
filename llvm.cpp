@@ -162,33 +162,38 @@ void IRGenerator::visit(ast::BinaryExpression* exp) {
     std::cout << std::endl;
     //-------------------------
 
+    bool float_exp = false;
+    if(L->getType()->isFloatingPointTy() && R->getType()->isIntegerTy()){
+        float_exp = true;
+        R = builder.CreateUIToFP(R, llvm::Type::getDoubleTy(context));
+    }
+    else if(L->getType()->isIntegerTy() && R->getType()->isFloatingPointTy()){
+        float_exp = true;
+        L = builder.CreateUIToFP(L, llvm::Type::getDoubleTy(context));
+    }
+    else if (L->getType()->isFloatingPointTy() && R->getType()->isFloatingPointTy()){
+        float_exp = true;
+    }
+
     switch (exp->op) {
         case ast::OperatorEnum::PLUS:
-            if(L->getType()->isFloatingPointTy() || R->getType()->isFloatingPointTy()) 
-                tmp_v = builder.CreateFAdd(L, R, "addtmp");
-            else
-                tmp_v = builder.CreateAdd(L, R, "addtmp");
+            if(float_exp) tmp_v = builder.CreateFAdd(L, R, "addtmp");
+            else tmp_v = builder.CreateAdd(L, R, "addtmp"); 
             break;
 
         case ast::OperatorEnum::MINUS:
-            if(L->getType()->isFloatingPointTy() || R->getType()->isFloatingPointTy()) 
-                tmp_v = builder.CreateFSub(L, R, "subtmp");
-            else
-                tmp_v = builder.CreateSub(L, R, "subtmp");
+            if(float_exp) tmp_v = builder.CreateFSub(L, R, "subtmp");
+            else tmp_v = builder.CreateSub(L, R, "subtmp");
             break;
         
         case ast::OperatorEnum::MUL:
-            if(L->getType()->isFloatingPointTy() || R->getType()->isFloatingPointTy()) 
-                tmp_v = builder.CreateFMul(L, R, "multmp");
-            else
-                tmp_v = builder.CreateMul(L, R, "multmp");
+            if(float_exp) tmp_v = builder.CreateFMul(L, R, "multmp");
+            else tmp_v = builder.CreateMul(L, R, "multmp");
             break;
 
         case ast::OperatorEnum::DIV:
-            if(L->getType()->isFloatingPointTy() || R->getType()->isFloatingPointTy()) 
-                tmp_v = builder.CreateFDiv(L, R, "divtmp");
-            else
-                tmp_v = builder.CreateSDiv(L, R, "divtmp");
+            if(float_exp) tmp_v = builder.CreateFDiv(L, R, "divtmp");
+            else tmp_v = builder.CreateSDiv(L, R, "divtmp");
             break;
         
         case ast::OperatorEnum::MOD:
@@ -206,7 +211,37 @@ void IRGenerator::visit(ast::BinaryExpression* exp) {
         case ast::OperatorEnum::XOR:
             tmp_v = builder.CreateXor(L, R, "xortmp");
             break;
+        
+        case ast::OperatorEnum::EQ:
+            if(float_exp) tmp_v = builder.CreateFCmpUEQ(L, R, "eqtmp");
+            else tmp_v = builder.CreateICmpEQ(L, R, "eqtmp");
+            break;
 
+        case ast::OperatorEnum::NEQ:
+            if(float_exp) tmp_v = builder.CreateFCmpUNE(L, R, "netmp");
+            else tmp_v = builder.CreateICmpNE(L, R, "netmp");
+            break;
+
+        case ast::OperatorEnum::GT:
+            if(float_exp) tmp_v = builder.CreateFCmpUGT(L, R, "gttmp");
+            else tmp_v = builder.CreateICmpSGT(L, R, "gttmp");
+            break;
+
+        case ast::OperatorEnum::LT:
+            if(float_exp) tmp_v = builder.CreateFCmpULT(L, R, "lttmp");
+            else tmp_v = builder.CreateICmpSLT(L, R, "lttmp");
+            break;
+        
+        case ast::OperatorEnum::GEQ:
+            if(float_exp) tmp_v = builder.CreateFCmpUGE(L, R, "geqtmp");
+            else tmp_v = builder.CreateICmpSGE(L, R, "geqtmp");
+            break;
+        
+        case ast::OperatorEnum::LEQ:
+            if(float_exp) tmp_v = builder.CreateFCmpULE(L, R, "leqtmp");
+            else tmp_v = builder.CreateICmpSLE(L, R, "leqtmp");
+            break;
+        
         default:
             std::cerr << "[LLVM]: Error: Unknown operator" << std::endl;
             return;
