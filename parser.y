@@ -14,7 +14,7 @@
 %parse-param { cplus::shell &shell }
 
 %token VAR ID IS INT_VAL REAL_VAL BOOL_VAL    // var <identifier> is \d+ \d+\.\d+ true|false
-%token TYPE_KW INT_KW REAL_KW BOOLEAN_KW      // type integer real boolean
+%token TYPE_KW INT_KW REAL_KW BOOL_KW         // type integer real boolean
 %token B_L B_R SB_L SB_R CB_L CB_R            // ( ) [ ] { }
 %token COLON SEMICOLON COMMA DOT DDOT BECOMES // : ; , . .. :=
 %token PLUS MINUS MUL DIV MOD                 // + - * / %
@@ -32,13 +32,23 @@
 %type <ast::np<ast::VariableDeclaration>> VARIABLE_DECLARATION PARAMETER_DECLARATION
 %type <ast::np<ast::RoutineDeclaration>> ROUTINE_DECLARATION
 %type <std::vector<ast::np<ast::VariableDeclaration>>> PARAMETERS
-%type <ast::np<ast::Expression>> EXPRESSION INT_EXP
-%type <ast::OperatorEnum> OPERATOR
+%type <ast::np<ast::Expression>> EXPRESSION INT_EXP REAL_EXP BOOL_EXP
 %type <ast::np<ast::Type>> TYPE PRIMITIVE_TYPE
 %type <ast::np<ast::Body>> BODY
 %type <ast::np<ast::Statement>> STATEMENT
 %type <ast::np<ast::ReturnStatement>> RETURN_STATEMENT
 %type <ast::np<ast::PrintStatement>> PRINT_STATEMENT
+
+%left COMMA
+%right BECOMES
+%left OR
+%left AND
+%left EQ NEQ XOR
+%left LT LEQ GT GEQ
+%left PLUS MINUS
+%left MUL DIV MOD
+%right NOT
+%left DOT
 
 %start PROGRAM
 
@@ -105,22 +115,93 @@ VARIABLE_DECLARATION:
 
 EXPRESSION :
     INT_EXP {
+        if(shell.debug) std::cout << "[PARSER]: INT_EXP" << std::endl;
         $$ = $1;
     }
+    | REAL_EXP {
+        if(shell.debug) std::cout << "[PARSER]: REAL_EXP" << std::endl;
+        $$ = $1;
+    }
+    | BOOL_EXP {
+        if(shell.debug) std::cout << "[PARSER]: BOOL_EXP" << std::endl;
+        $$ = $1;
+    }
+    | ID { // TODO: generalize to MP_Eq
+        if(shell.debug) std::cout << "[PARSER]: ID" << std::endl;
+        $$ = std::make_shared<ast::Identifier>($1);
+    }
 ;
-
-OPERATOR :
-    PLUS { $$ = ast::OperatorEnum::PLUS; }
-;
-
 
 INT_EXP:
     INT_VAL {
-        $$ = std::make_shared<ast::IntegerLiteral>($1);
+        $$ = std::make_shared<ast::IntLiteral>($1);
     }
-    | B_L INT_EXP B_R           { $$ = $2; }
-    | INT_EXP OPERATOR INT_EXP  { $$ = std::make_shared<ast::BinaryExpression>($1, $2, $3); }
-    /* | MINUS INT_EXP             { $$ = std::make_shared<UnaryExpression>(ast::OperatorEnum::MINUS, $2); } */
+    | B_L INT_EXP B_R {
+        $$ = $2;
+    }
+    | INT_EXP PLUS INT_EXP {
+        $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::PLUS, $3);
+    }
+    | INT_EXP MINUS INT_EXP {
+        $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::MINUS, $3);
+    }
+    | INT_EXP MUL INT_EXP {
+        $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::MUL, $3);
+    }
+    | INT_EXP MOD INT_EXP {
+        $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::MOD, $3);
+    }
+    | INT_EXP DIV INT_EXP { // Integer division
+        $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::DIV, $3);
+    }
+    | MINUS INT_EXP {
+        $$ = std::make_shared<ast::UnaryExpression>(ast::OperatorEnum::MINUS, $2);
+    }
+;
+
+REAL_EXP:
+    REAL_VAL {
+        $$ = std::make_shared<ast::RealLiteral>($1);
+    }
+    | B_L REAL_EXP B_R {
+        $$ = $2;
+    }
+    | REAL_EXP PLUS REAL_EXP {
+        $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::PLUS, $3);
+    }
+    | REAL_EXP MINUS REAL_EXP {
+        $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::MINUS, $3);
+    }
+    | REAL_EXP MUL REAL_EXP {
+        $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::MUL, $3);
+    }
+    | REAL_EXP DIV REAL_EXP {
+        $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::DIV, $3);
+    }
+    | MINUS REAL_EXP {
+        $$ = std::make_shared<ast::UnaryExpression>(ast::OperatorEnum::MINUS, $2);
+    }
+;
+
+BOOL_EXP:
+    BOOL_VAL {
+        $$ = std::make_shared<ast::BoolLiteral>($1);
+    }
+    | B_L BOOL_EXP B_R {
+        $$ = $2;
+    }
+    | BOOL_EXP AND BOOL_EXP {
+        $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::AND, $3);
+    }
+    | BOOL_EXP OR BOOL_EXP {
+        $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::OR, $3);
+    }
+    | BOOL_EXP XOR BOOL_EXP {
+        $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::XOR, $3);
+    }
+    | NOT BOOL_EXP {
+        $$ = std::make_shared<ast::UnaryExpression>(ast::OperatorEnum::NOT, $2);
+    }
 ;
 
 TYPE :
@@ -129,7 +210,13 @@ TYPE :
 
 PRIMITIVE_TYPE:
     INT_KW {
-        $$ = std::make_shared<ast::IntegerType>();
+        $$ = std::make_shared<ast::IntType>();
+    }
+    | REAL_KW {
+        $$ = std::make_shared<ast::RealType>();
+    }
+    | BOOL_KW {
+        $$ = std::make_shared<ast::BoolType>();
     }
 ;
 

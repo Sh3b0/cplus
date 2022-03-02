@@ -19,9 +19,15 @@ public:
     IRGenerator();
     void generate();
     void visit(ast::Program *program) override;
-    void visit(ast::IntegerType *it) override;
-    void visit(ast::IntegerLiteral *il) override;
+    void visit(ast::IntType *it) override;
+    void visit(ast::RealType *rt) override;
+    void visit(ast::BoolType *bt) override;
+    void visit(ast::IntLiteral *il) override;
+    void visit(ast::RealLiteral *rl) override;
+    void visit(ast::BoolLiteral *bl) override;
     void visit(ast::VariableDeclaration *vardecl) override;
+    void visit(ast::Identifier *id) override;
+    void visit(ast::UnaryExpression *exp) override;
     void visit(ast::BinaryExpression *exp) override;
     void visit(ast::RoutineDeclaration *routine) override;
     void visit(ast::Body *body) override;

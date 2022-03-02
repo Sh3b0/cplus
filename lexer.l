@@ -46,8 +46,8 @@ alphanum   [a-zA-Z_0-9]
 }
 
 "boolean" {
-    if (driver.debug) std::cout << "[LEXER]: BOOLEAN_KW\n";
-    return cplus::parser::make_BOOLEAN_KW();
+    if (driver.debug) std::cout << "[LEXER]: BOOL_KW\n";
+    return cplus::parser::make_BOOL_KW();
 }
 
 "array" {

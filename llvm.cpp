@@ -50,6 +50,7 @@ void IRGenerator::visit(ast::Program *program) {
     for (auto u : program->routines) {
         u->accept(this);
     }
+
     if (shell.debug) std::cout << "[LLVM]: </Program>" << std::endl;
 }
 
@@ -60,6 +61,7 @@ void IRGenerator::visit(ast::VariableDeclaration *var) {
     var->dtype->accept(this);
     auto dtype = pop_tmp_t();
     
+    // TODO: deduce dtype of expressions to not get segfault here.
     auto v = builder.CreateAlloca(dtype, nullptr, var->name);
     
     // auto v = new llvm::AllocaInst(dtype, 0, var->name);
@@ -85,17 +87,155 @@ void IRGenerator::visit(ast::VariableDeclaration *var) {
     if (shell.debug) std::cout << "[LLVM]: </VariableDeclaration>" << std::endl;
 }
 
-void IRGenerator::visit(ast::IntegerType *it) {
+void IRGenerator::visit(ast::Identifier* id) {
+    std::cout << "[LLVM]: <Identifier>" << std::endl;
+   
+    auto v = named_values[id->name];
+    if (v == nullptr) {
+        std::cerr << "[LLVM]: Error: " << id->name << " is not declared." << std::endl;
+        return;
+    }
+ 
+    tmp_v = builder.CreateLoad(v, id->name);
+    std::cout << "[LLVM]: </Identifier>" << std::endl;
+}
+
+void IRGenerator::visit(ast::UnaryExpression* exp) {
+    if (shell.debug) std::cout << "[LLVM]: <UnaryExpression>" << std::endl;
+    
+    exp->operand->accept(this);
+    llvm::Value *O = pop_tmp_v();
+
+    switch (exp->op) {
+        case ast::OperatorEnum::MINUS:
+            if(O->getType()->isFloatingPointTy()) 
+                builder.CreateFNeg(O, "negtmp");
+            else
+                tmp_v = builder.CreateNeg(O, "negtmp");
+            break;
+
+        case ast::OperatorEnum::NOT:
+            tmp_v = builder.CreateNot(O, "subtmp");
+            break;
+    }
+
+    if (shell.debug) std::cout << "[LLVM]: </UnaryExpression>" << std::endl;
+}
+
+void IRGenerator::visit(ast::BinaryExpression* exp) {
+    if (shell.debug) std::cout << "[LLVM]: <BinaryExpression>" << std::endl;
+    exp->lhs->accept(this);
+    llvm::Value *L = pop_tmp_v();
+
+    exp->rhs->accept(this);
+    llvm::Value *R = pop_tmp_v();
+
+    //-------------------------
+    L->print(llvm::outs());
+    switch (exp->op) {
+        case ast::OperatorEnum::PLUS:
+            std::cout << " + " << std::flush;
+            break;
+        case ast::OperatorEnum::MINUS:
+            std::cout << " - " << std::flush;
+            break;
+        case ast::OperatorEnum::MUL:
+            std::cout << " * " << std::flush;
+            break;
+        case ast::OperatorEnum::DIV:
+            std::cout << " / " << std::flush;
+            break;
+        case ast::OperatorEnum::MOD:
+            std::cout << " % " << std::flush;
+            break;
+        case ast::OperatorEnum::AND:
+            std::cout << " & " << std::flush;
+            break;
+        case ast::OperatorEnum::OR:
+            std::cout << " | " << std::flush;
+            break;
+        case ast::OperatorEnum::XOR:
+            std::cout << " ^ " << std::flush;
+            break;
+    }
+    R->print(llvm::outs());
+    std::cout << std::endl;
+    //-------------------------
+
+    switch (exp->op) {
+        case ast::OperatorEnum::PLUS:
+            if(L->getType()->isFloatingPointTy() || R->getType()->isFloatingPointTy()) 
+                tmp_v = builder.CreateFAdd(L, R, "addtmp");
+            else
+                tmp_v = builder.CreateAdd(L, R, "addtmp");
+            break;
+
+        case ast::OperatorEnum::MINUS:
+            if(L->getType()->isFloatingPointTy() || R->getType()->isFloatingPointTy()) 
+                tmp_v = builder.CreateFSub(L, R, "subtmp");
+            else
+                tmp_v = builder.CreateSub(L, R, "subtmp");
+            break;
+        
+        case ast::OperatorEnum::MUL:
+            if(L->getType()->isFloatingPointTy() || R->getType()->isFloatingPointTy()) 
+                tmp_v = builder.CreateFMul(L, R, "multmp");
+            else
+                tmp_v = builder.CreateMul(L, R, "multmp");
+            break;
+
+        case ast::OperatorEnum::DIV:
+            if(L->getType()->isFloatingPointTy() || R->getType()->isFloatingPointTy()) 
+                tmp_v = builder.CreateFDiv(L, R, "divtmp");
+            else
+                tmp_v = builder.CreateSDiv(L, R, "divtmp");
+            break;
+        
+        case ast::OperatorEnum::MOD:
+            tmp_v = builder.CreateSRem(L, R, "remtmp");
+            break;
+
+        case ast::OperatorEnum::AND:
+            tmp_v = builder.CreateAnd(L, R, "andtmp");
+            break;
+
+        case ast::OperatorEnum::OR:
+            tmp_v = builder.CreateOr(L, R, "ortmp");
+            break;
+        
+        case ast::OperatorEnum::XOR:
+            tmp_v = builder.CreateXor(L, R, "xortmp");
+            break;
+
+        default:
+            std::cerr << "[LLVM]: Error: Unknown operator" << std::endl;
+            return;
+    }
+    if (shell.debug) std::cout << "[LLVM]: </BinaryExpression>" << std::endl;
+}
+
+void IRGenerator::visit(ast::IntType *it) {
     tmp_t = llvm::Type::getInt64Ty(context);
 }
 
-void IRGenerator::visit(ast::IntegerLiteral *il) {
-    tmp_v = llvm::ConstantInt::get(context, llvm::APInt(64, il->value));
+void IRGenerator::visit(ast::RealType *rt) {
+    tmp_t = llvm::Type::getDoubleTy(context);
 }
 
-void IRGenerator::visit(ast::BinaryExpression *exp) {
-    if (shell.debug) std::cout << "[LLVM]: <BinaryExpression>" << std::endl;
-    if (shell.debug) std::cout << "[LLVM]: </BinaryExpression>" << std::endl;
+void IRGenerator::visit(ast::BoolType *bt) {
+    tmp_t = llvm::Type::getInt1Ty(context);
+}
+
+void IRGenerator::visit(ast::IntLiteral *il) {
+    tmp_v = llvm::ConstantInt::get(context, llvm::APInt(64, il->value, true));
+}
+
+void IRGenerator::visit(ast::RealLiteral *rl) {
+    tmp_v = llvm::ConstantFP::get(context, llvm::APFloat(rl->value));
+}
+
+void IRGenerator::visit(ast::BoolLiteral *bl) {
+    tmp_v = llvm::ConstantInt::get(context, llvm::APInt(1, bl->value, true));
 }
 
 void IRGenerator::visit(ast::RoutineDeclaration* routine) {
@@ -155,6 +295,9 @@ void IRGenerator::visit(ast::Body* body) {
     auto vars = body->variables;
     auto stmts = body->statements;
 
+    std::cout << "[LLVM]: vars = " << body->variables.size() << std::endl;
+    std::cout << "[LLVM]: stmts = " << body->statements.size() << std::endl;
+
     // Parse tree pushed them in reverse order.
     std::reverse(vars.begin(), vars.end());
     std::reverse(stmts.begin(), stmts.end());
@@ -186,26 +329,48 @@ void IRGenerator::visit(ast::ReturnStatement* stmt) {
 void IRGenerator::visit(ast::PrintStatement* stmt) {
     if (shell.debug) std::cout << "[LLVM]: <PrintStatement>" << std::endl;
 
-    llvm::Value* val = nullptr;
-    if (stmt->exp != nullptr) {
-        stmt->exp->accept(this);
-        val = pop_tmp_v();
-    }
+    stmt->exp->accept(this);
+    llvm::Value* to_print = pop_tmp_v();
     
     // Format string for printf
-    std::string fmt = "%lld\n"; // TODO: change based on expression type
+    std::string fmt;
+    if (to_print->getType()->isIntegerTy()) { // bool will also match here.
+        fmt = "%lld\n";
+    }
+    else if (to_print->getType()->isFloatingPointTy()) {
+        fmt = "%f\n";
+    }
+    else {
+        std::cerr << "[LLVM]: Error: Cannot print " << std::flush;
+        to_print->getType()->print(llvm::errs());
+        return;
 
+        // fmt = "%lld\n";
+        // to_print = builder.CreateLoad(llvm::Type::getInt64Ty(context), to_print, "tmp");
+        
+        // to_print = pop_tmp_v();
+        // to_print->getType()->print(llvm::outs());
+        // to_print->print(llvm::outs());
+
+        // if (llvm::ConstantInt* CI = llvm::dyn_cast<llvm::Poin>(to_print)) {
+        //     if (CI->getBitWidth() <= 64) {
+        //         std::cout << "I AM HERE" << std::endl;
+        //         to_print = llvm::ConstantInt::get(context, llvm::APInt(64, CI->getSExtValue(), true));
+        //     }
+        // }
+    }
+    
     // Add function call code
     std::vector<llvm::Value*> tmp;
     tmp.push_back(builder.CreateGlobalStringPtr(llvm::StringRef(fmt), "_"));
-    tmp.push_back(val);
+    tmp.push_back(to_print);
     auto args = llvm::ArrayRef<llvm::Value*>(tmp);
 
     // Printf function callee
     llvm::FunctionCallee print = module->getOrInsertFunction(
         "printf",
         llvm::FunctionType::get(
-            llvm::IntegerType::getInt32Ty(context),
+            llvm::IntegerType::getInt64Ty(context),
             llvm::PointerType::get(llvm::Type::getInt8Ty(context), 0),
             true
         )
