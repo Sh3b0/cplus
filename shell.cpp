@@ -19,19 +19,13 @@ void shell::readFrom(std::istream *is) {
     l.switch_streams(is, nullptr);
 }
 
-void shell::prompt()
-{
-    if ((*this).interactive) {
-        std::cout << "cplus> ";
-    }
-}
-
 void shell::show_help() {
-    std::cout << "usage: cplus [options] [file]\n\noptional arguments:\n";
-    std::cout << "-h, --help\tshow this help message and exit.\n";
-    std::cout << "-d, --debug\tshow debug messages.\n";
-    std::cout << "-o, --outfile\texecutable file name.\n";
-    std::cout << "file\t\tpath to the source code file (*.cp) to compile.\n";
+    std::cout << "usage: cplus [options] infile\n";
+    std::cout << "\tinfile\t\t\tpath to the source code file (*.cp) to compile.\n\n";
+    std::cout << "options:\n";
+    std::cout << "\t-h, --help\t\tshow this help message and exit.\n";
+    std::cout << "\t-d, --debug\t\tshow debug messages.\n";
+    std::cout << "\t-o, --outfile outfile\texecutable file name.\n";
 }
 
 int shell::parse_args(int argc, char **argv) {
@@ -49,7 +43,6 @@ int shell::parse_args(int argc, char **argv) {
             continue;
         }
         else {
-            interactive = false;
             infile.open(arg);
             if (!infile.good())
             {
@@ -60,11 +53,8 @@ int shell::parse_args(int argc, char **argv) {
         }
     }
     if (!infile.is_open()) {
-        auto time = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
-        std::string now = ctime(&time);
-        now.erase(now.size() - 1);
-        std::cout << "C+ 0.1.0 (" << now << ")\n";
-        prompt();
+        show_help();
+        return 1;
     }
     return 0;
 }

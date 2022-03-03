@@ -14,7 +14,6 @@ public:
     friend class parser;
     friend class lexer;
 
-    bool interactive = true;
     bool debug = false;
     std::ifstream infile;
     std::string outfile = "a.out";
@@ -23,8 +22,6 @@ public:
     int parse_args(int argc, char **argv);
     int print_ast();
     void readFrom(std::istream *is);
-    void prompt();
-    void init();
     void show_help();
     
 private:

@@ -6,10 +6,10 @@
 %define api.token.constructor
 %define parse.assert
 %define api.parser.class { parser }
-%define api.namespace { cplus }
+%define api.namespace    { cplus }
 
-%lex-param { cplus::lexer &lexer }
-%lex-param { cplus::shell &shell }
+%lex-param   { cplus::lexer &lexer }
+%lex-param   { cplus::shell &shell }
 %parse-param { cplus::lexer &lexer }
 %parse-param { cplus::shell &shell }
 
@@ -32,7 +32,7 @@
 %type <ast::np<ast::VariableDeclaration>> VARIABLE_DECLARATION PARAMETER_DECLARATION
 %type <ast::np<ast::RoutineDeclaration>> ROUTINE_DECLARATION
 %type <std::vector<ast::np<ast::VariableDeclaration>>> PARAMETERS
-%type <ast::np<ast::Expression>> EXPRESSION INT_EXP REAL_EXP BOOL_EXP // ID_EQN
+%type <ast::np<ast::Expression>> EXPRESSION
 %type <ast::np<ast::Type>> TYPE PRIMITIVE_TYPE
 %type <ast::np<ast::Body>> BODY
 %type <ast::np<ast::Statement>> STATEMENT
@@ -59,10 +59,9 @@
     #include <vector>
     #include "ast.hpp"
 
-    namespace cplus
-    {
-        class lexer;
-        class shell;
+    namespace cplus {
+    class lexer;
+    class shell;
     }
 }
 
@@ -70,6 +69,8 @@
 {
     #include "lexer.h"
     #include "shell.hpp"
+    #define RESET   "\033[0m"
+    #define GREEN   "\033[32m"
 
     static cplus::parser::symbol_type yylex(cplus::lexer &lexer, cplus::shell &shell) {
         return lexer.get_next_token();
@@ -87,12 +88,11 @@ COMMA_SEPARATOR : COMMA | %empty
 
 PROGRAM:
     %empty {
-        if (shell.debug) std::cout << "[PARSER]: EOF\n";
+        if (shell.debug) std::cout << GREEN << "[PARSER]: EOF" << RESET << std::endl;
     }
     | VARIABLE_DECLARATION PROGRAM {
-        if(shell.debug) std::cout << "[PARSER]: VARABLE_DECLARATION" << std::endl;
+        if(shell.debug) std::cout << GREEN << "[PARSER]: VARABLE_DECLARATION" << RESET << std::endl;
         program->variables.push_back($1);
-        shell.prompt();
     }
     | ROUTINE_DECLARATION PROGRAM {
         program->routines.push_back($1);
@@ -114,127 +114,49 @@ VARIABLE_DECLARATION:
 ;
 
 EXPRESSION :
-    INT_EXP {
-        if(shell.debug) std::cout << "[PARSER]: INT_EXP" << std::endl;
-        $1->dtype = std::make_shared<ast::IntType>();
-        $$ = $1;
-    }
-    | REAL_EXP {
-        if(shell.debug) std::cout << "[PARSER]: REAL_EXP" << std::endl;
-        $1->dtype = std::make_shared<ast::RealType>();
-        $$ = $1;
-    }
-    | BOOL_EXP {
-        if(shell.debug) std::cout << "[PARSER]: BOOL_EXP" << std::endl;
-        $1->dtype = std::make_shared<ast::BoolType>();
-        $$ = $1;
-    }
-    | ID {
-        $$ = std::make_shared<ast::Identifier>($1);
-    }
+    ID                                { $$ = std::make_shared<ast::Identifier>($1); }
+    | INT_VAL                         { $$ = std::make_shared<ast::IntLiteral>($1); }
+    | REAL_VAL                        { $$ = std::make_shared<ast::RealLiteral>($1); }
+    | BOOL_VAL                        { $$ = std::make_shared<ast::BoolLiteral>($1); }
+
+    | B_L EXPRESSION B_R              { $$ = $2; }
+    | NOT EXPRESSION                  { $$ = std::make_shared<ast::UnaryExpression>(ast::OperatorEnum::NOT, $2); }
+    | MINUS EXPRESSION                { $$ = std::make_shared<ast::UnaryExpression>(ast::OperatorEnum::MINUS, $2); }
+    
+    | EXPRESSION PLUS EXPRESSION      { $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::PLUS, $3); }
+    | EXPRESSION MINUS EXPRESSION     { $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::MINUS, $3); } 
+    | EXPRESSION MUL EXPRESSION       { $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::MUL, $3); } 
+    | EXPRESSION DIV EXPRESSION       { $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::DIV, $3); }
+    | EXPRESSION MOD EXPRESSION       { $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::MOD, $3); }
+    | EXPRESSION AND EXPRESSION       { $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::AND, $3); }
+    | EXPRESSION OR EXPRESSION        { $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::OR, $3); }
+    | EXPRESSION XOR EXPRESSION       { $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::XOR, $3); }
+    | EXPRESSION EQ EXPRESSION        { $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::EQ, $3); } 
+    | EXPRESSION NEQ EXPRESSION       { $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::NEQ, $3); } 
+    | EXPRESSION LT EXPRESSION        { $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::LT, $3); } 
+    | EXPRESSION GT EXPRESSION        { $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::GT, $3); } 
+    | EXPRESSION LEQ EXPRESSION       { $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::LEQ, $3); } 
+    | EXPRESSION GEQ EXPRESSION       { $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::GEQ, $3); } 
 ;
-
-// Hey, if you can make the following EXP matching shorter/smarter without conflicts, submit a PR :)
-
-INT_EXP:
-    INT_VAL                    { $$ = std::make_shared<ast::IntLiteral>($1); }
-    | B_L INT_EXP B_R          { $$ = $2; }
-    | INT_EXP PLUS INT_EXP     { $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::PLUS, $3); }
-    | INT_EXP MINUS INT_EXP    { $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::MINUS, $3); }
-    | INT_EXP MUL INT_EXP      { $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::MUL, $3); }
-    | INT_EXP MOD INT_EXP      { $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::MOD, $3); }
-    | INT_EXP DIV INT_EXP      { $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::DIV, $3); }
-    | MINUS INT_EXP            { $$ = std::make_shared<ast::UnaryExpression>(ast::OperatorEnum::MINUS, $2); }
-;
-
-REAL_EXP:
-    REAL_VAL                   { $$ = std::make_shared<ast::RealLiteral>($1); }
-    | B_L REAL_EXP B_R         { $$ = $2; }
-    | REAL_EXP PLUS REAL_EXP   { $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::PLUS, $3); }
-    | INT_EXP PLUS REAL_EXP    { $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::PLUS, $3); }
-    | REAL_EXP PLUS INT_EXP    { $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::PLUS, $3); }
-
-    | REAL_EXP MINUS REAL_EXP  { $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::MINUS, $3); }
-    | INT_EXP MINUS REAL_EXP   { $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::MINUS, $3); }
-    | REAL_EXP MINUS INT_EXP   { $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::MINUS, $3); }
-
-    | REAL_EXP MUL REAL_EXP    { $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::MUL, $3); }
-    | INT_EXP MUL REAL_EXP     { $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::MUL, $3); }
-    | REAL_EXP MUL INT_EXP     { $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::MUL, $3); }
-
-    | REAL_EXP DIV REAL_EXP    { $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::DIV, $3); }
-    | INT_EXP DIV REAL_EXP     { $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::DIV, $3); }
-    | REAL_EXP DIV INT_EXP     { $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::DIV, $3); }
-
-    | MINUS REAL_EXP           { $$ = std::make_shared<ast::UnaryExpression>(ast::OperatorEnum::MINUS, $2); }
-;
-
-BOOL_EXP:
-    BOOL_VAL                   { $$ = std::make_shared<ast::BoolLiteral>($1); }
-    | B_L BOOL_EXP B_R         { $$ = $2; }
-    | BOOL_EXP AND BOOL_EXP    { $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::AND, $3); }
-    | BOOL_EXP OR BOOL_EXP     { $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::OR, $3); }
-    | BOOL_EXP XOR BOOL_EXP    { $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::XOR, $3); }
-    | NOT BOOL_EXP             { $$ = std::make_shared<ast::UnaryExpression>(ast::OperatorEnum::NOT, $2); }
-
-    | INT_EXP EQ INT_EXP       { $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::EQ, $3); }
-    | REAL_EXP EQ REAL_EXP     { $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::EQ, $3); }
-    | INT_EXP EQ REAL_EXP      { $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::EQ, $3); }
-    | REAL_EXP EQ INT_EXP      { $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::EQ, $3); }
-
-    | INT_EXP NEQ INT_EXP      { $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::NEQ, $3); }
-    | REAL_EXP NEQ REAL_EXP    { $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::NEQ, $3); }
-    | INT_EXP NEQ REAL_EXP     { $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::NEQ, $3); }
-    | REAL_EXP NEQ INT_EXP     { $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::NEQ, $3); }
-
-    | INT_EXP LT INT_EXP       { $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::LT, $3); }
-    | REAL_EXP LT REAL_EXP     { $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::LT, $3); }
-    | INT_EXP LT REAL_EXP      { $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::LT, $3); }
-    | REAL_EXP LT INT_EXP      { $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::LT, $3); }
-
-    | INT_EXP GT INT_EXP       { $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::GT, $3); }
-    | REAL_EXP GT REAL_EXP     { $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::GT, $3); }
-    | INT_EXP GT REAL_EXP      { $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::GT, $3); }
-    | REAL_EXP GT INT_EXP      { $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::GT, $3); }
-
-    | INT_EXP LEQ INT_EXP      { $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::LEQ, $3); }
-    | REAL_EXP LEQ REAL_EXP    { $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::LEQ, $3); }
-    | INT_EXP LEQ REAL_EXP     { $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::LEQ, $3); }
-    | REAL_EXP LEQ INT_EXP     { $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::LEQ, $3); }
-
-    | INT_EXP GEQ INT_EXP      { $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::GEQ, $3); }
-    | REAL_EXP GEQ REAL_EXP    { $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::GEQ, $3); }
-    | INT_EXP GEQ REAL_EXP     { $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::GEQ, $3); }
-    | REAL_EXP GEQ INT_EXP     { $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::GEQ, $3); }
-;
-
 
 TYPE :
     PRIMITIVE_TYPE
 ;
 
 PRIMITIVE_TYPE:
-    INT_KW {
-        $$ = std::make_shared<ast::IntType>();
-    }
-    | REAL_KW {
-        $$ = std::make_shared<ast::RealType>();
-    }
-    | BOOL_KW {
-        $$ = std::make_shared<ast::BoolType>();
-    }
+    INT_KW    { $$ = std::make_shared<ast::IntType>(); }
+    | REAL_KW { $$ = std::make_shared<ast::RealType>(); }
+    | BOOL_KW { $$ = std::make_shared<ast::BoolType>(); }
 ;
 
 ROUTINE_DECLARATION :
     ROUTINE ID B_L PARAMETERS B_R IS BODY END {
-        if (shell.debug) std::cout << "[PARSER]: ROUTINE_DECLARATION: " << $2 << std::endl;
+        if (shell.debug) std::cout << GREEN << "[PARSER]: ROUTINE_DECLARATION: " << $2 << RESET << std::endl;
         $$ = std::make_shared<ast::RoutineDeclaration>($2, $4, $7);
-        shell.prompt();
     }
     | ROUTINE ID B_L PARAMETERS B_R COLON TYPE IS BODY END {
-        if (shell.debug) std::cout << "[PARSER]: ROUTINE_DECLARATION: " << $2 << std::endl;
+        if (shell.debug) std::cout << GREEN << "[PARSER]: ROUTINE_DECLARATION: " << $2 << RESET << std::endl;
         $$ = std::make_shared<ast::RoutineDeclaration>($2, $4, $9, $7);
-        shell.prompt();
     }
 ;
 
@@ -273,23 +195,24 @@ BODY :
 ;
 
 STATEMENT :
-    RETURN_STATEMENT { $$ = $1; }
+    RETURN_STATEMENT  { $$ = $1; }
     | PRINT_STATEMENT { $$ = $1; }
 ;
 
-RETURN_STATEMENT : RETURN EXPRESSION SEMICOLON {
-    if (shell.debug) std::cout << "[PARSER]: RETURN_STATEMENT\n";
-    $$ = std::make_shared<ast::ReturnStatement>($2);
-}
+RETURN_STATEMENT :
+    RETURN EXPRESSION SEMICOLON {
+        if (shell.debug) std::cout << GREEN << "[PARSER]: RETURN_STATEMENT" << RESET << std::endl;
+        $$ = std::make_shared<ast::ReturnStatement>($2);
+    }
 ;
 
 PRINT_STATEMENT :
     PRINT EXPRESSION SEMICOLON {
-        if (shell.debug) std::cout << "[PARSER]: PRINT_STATEMENT\n";
+        if (shell.debug) std::cout << GREEN << "[PARSER]: PRINT_STATEMENT" << RESET << std::endl;
         $$ = std::make_shared<ast::PrintStatement>($2);
     }
 
 %%
 void cplus::parser::error(const std::string& msg) {
-    std::cout << msg << '\n';
+    std::cerr << msg << '\n';
 }

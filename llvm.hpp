@@ -43,8 +43,28 @@ private:
     llvm::Value* tmp_v = nullptr;
     llvm::Type* tmp_t = nullptr;
 
+    int spaces = 0;
+
     llvm::Value* pop_tmp_v();
     llvm::Type* pop_tmp_t();
+
+    std::map<ast::OperatorEnum, std::string> op_to_str = {
+        { ast::OperatorEnum::PLUS, "+" },
+        { ast::OperatorEnum::MINUS, "-" },
+        { ast::OperatorEnum::MUL, "*" },
+        { ast::OperatorEnum::DIV, "/" },
+        { ast::OperatorEnum::MOD, "%" },
+        { ast::OperatorEnum::AND, "%" },
+        { ast::OperatorEnum::OR, "|" },
+        { ast::OperatorEnum::XOR, "^" },
+        { ast::OperatorEnum::NOT, "~" },
+        { ast::OperatorEnum::LEQ, "<=" },
+        { ast::OperatorEnum::GEQ, ">=" },
+        { ast::OperatorEnum::LT, "<" },
+        { ast::OperatorEnum::GT, ">" },
+        { ast::OperatorEnum::EQ, "=" },
+        { ast::OperatorEnum::NEQ, "/=" }
+    };
 };
 
 #endif // LLVM_H

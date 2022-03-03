@@ -26,7 +26,7 @@ int main(int argc, char **argv) {
 
     std::string cmd = "clang -x ir ir.ll -o " + shell.outfile;
     system(cmd.c_str());
-    std::cout << "\nCompilation successful. Run ./" << shell.outfile << " to execute\n";
+    std::cout << "\033[0m" << "\nCompilation successful. Run ./" << shell.outfile << " to execute\n";
     
     return 0;
 }
