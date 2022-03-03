@@ -33,6 +33,7 @@ public:
     void visit(ast::Body *body) override;
     void visit(ast::ReturnStatement *stmt) override;
     void visit(ast::PrintStatement *stmt) override;
+    void visit(ast::AssignmentStatement *stmt) override;
 
 private:
     llvm::LLVMContext context;
@@ -41,11 +42,13 @@ private:
     std::map<std::string, llvm::Value*> named_values;
 
     llvm::Value* tmp_v = nullptr;
+    llvm::Value* tmp_p = nullptr;
     llvm::Type* tmp_t = nullptr;
 
     int spaces = 0;
 
     llvm::Value* pop_tmp_v();
+    llvm::Value* pop_tmp_p();
     llvm::Type* pop_tmp_t();
 
     std::map<ast::OperatorEnum, std::string> op_to_str = {

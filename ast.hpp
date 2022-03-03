@@ -32,6 +32,7 @@ struct Body;
 struct Statement;
 struct ReturnStatement;
 struct PrintStatement;
+struct AssignmentStatement;
 } // namespace ast
 
 // Base class for code generator and anything that traverses AST.
@@ -52,6 +53,7 @@ public:
     virtual void visit(ast::Body *body) = 0;
     virtual void visit(ast::ReturnStatement *stmt) = 0;
     virtual void visit(ast::PrintStatement *stmt) = 0;
+    virtual void visit(ast::AssignmentStatement *stmt) = 0;
 };
 
 namespace ast {
@@ -256,6 +258,19 @@ struct PrintStatement : Statement {
 
     void accept(Visitor* v) override { v->visit(this); }
 };
+
+struct AssignmentStatement : Statement {
+    np<Identifier> id;
+    np<Expression> exp;
+
+    AssignmentStatement(np<Identifier> id, np<Expression> exp) {
+        this->id = id;
+        this->exp = exp;
+    }
+
+    void accept(Visitor* v) override { v->visit(this); }
+};
+
 // </Statements>
 } // namespace ast
 

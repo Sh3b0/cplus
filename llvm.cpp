@@ -5,7 +5,7 @@ extern cplus::shell shell;
 // Constructor
 IRGenerator::IRGenerator() : builder(context) {
     module = std::make_unique<llvm::Module>(llvm::StringRef("ir.ll"), context);
-    std::cout << "\e[1m\033[35m"; // Bold MAGENTA Text
+    std::cout << "\e[1m\033[35m"; // Bold Magenta Text
 }
 
 // Emits IR code as "ir.ll"
@@ -34,6 +34,12 @@ llvm::Value* IRGenerator::pop_tmp_v() {
     auto v = tmp_v;
     tmp_v = nullptr;
     return v;
+}
+
+llvm::Value* IRGenerator::pop_tmp_p() {
+    auto p = tmp_p;
+    tmp_p = nullptr;
+    return p;
 }
 
 llvm::Type* IRGenerator::pop_tmp_t() {
@@ -112,7 +118,9 @@ void IRGenerator::visit(ast::Identifier* id) {
     }
  
     tmp_v = builder.CreateLoad(v, id->name);
+    tmp_p = v;
     tmp_t = tmp_v->getType();
+    
     std::cout << "[LLVM]: " << std::string(--spaces, ' ') << "</Identifier>" << std::endl;
 }
 
@@ -384,7 +392,8 @@ void IRGenerator::visit(ast::PrintStatement* stmt) {
     llvm::Value* to_print = pop_tmp_v();
     llvm::Type* dtype = pop_tmp_t();
 
-    if(dtype == nullptr) { // Printing a constant
+    // If printing a constant
+    if(dtype == nullptr) {
         dtype = to_print->getType();
     }
     
@@ -422,4 +431,14 @@ void IRGenerator::visit(ast::PrintStatement* stmt) {
     builder.CreateCall(print, args, "printfCall");
 
     if (shell.debug) std::cout << "[LLVM]: " << std::string(--spaces, ' ') << "</PrintStatement>" << std::endl;
+}
+
+void IRGenerator::visit(ast::AssignmentStatement* stmt) {
+    stmt->id->accept(this);
+    auto id = pop_tmp_p();
+
+    stmt->exp->accept(this);
+    auto exp = pop_tmp_v();
+
+    builder.CreateStore(exp, id);
 }

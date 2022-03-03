@@ -38,6 +38,7 @@
 %type <ast::np<ast::Statement>> STATEMENT
 %type <ast::np<ast::ReturnStatement>> RETURN_STATEMENT
 %type <ast::np<ast::PrintStatement>> PRINT_STATEMENT
+%type <ast::np<ast::AssignmentStatement>> ASSIGNMENT_STATEMENT
 
 %left COMMA
 %right BECOMES
@@ -195,8 +196,9 @@ BODY :
 ;
 
 STATEMENT :
-    RETURN_STATEMENT  { $$ = $1; }
-    | PRINT_STATEMENT { $$ = $1; }
+    RETURN_STATEMENT       { $$ = $1; }
+    | PRINT_STATEMENT      { $$ = $1; }
+    | ASSIGNMENT_STATEMENT { $$ = $1; }
 ;
 
 RETURN_STATEMENT :
@@ -211,6 +213,13 @@ PRINT_STATEMENT :
         if (shell.debug) std::cout << GREEN << "[PARSER]: PRINT_STATEMENT" << RESET << std::endl;
         $$ = std::make_shared<ast::PrintStatement>($2);
     }
+;
+
+ASSIGNMENT_STATEMENT :
+    ID BECOMES EXPRESSION SEMICOLON {
+        $$ = std::make_shared<ast::AssignmentStatement>(std::make_shared<ast::Identifier>($1), $3);
+    }
+;
 
 %%
 void cplus::parser::error(const std::string& msg) {
