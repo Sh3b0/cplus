@@ -2,12 +2,9 @@
 #define AST_H
 
 #include <iostream>
-#include <string>
 #include <memory>
 #include <map>
 #include <vector>
-#include <variant>
-#include <sstream>
 
 #include <llvm/IR/Module.h>
 #include <llvm/IR/IRBuilder.h>
