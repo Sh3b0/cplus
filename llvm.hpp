@@ -22,6 +22,7 @@ public:
     void visit(ast::IntType *it) override;
     void visit(ast::RealType *rt) override;
     void visit(ast::BoolType *bt) override;
+    void visit(ast::ArrayType *at) override;
     void visit(ast::IntLiteral *il) override;
     void visit(ast::RealLiteral *rl) override;
     void visit(ast::BoolLiteral *bl) override;
@@ -39,7 +40,7 @@ private:
     llvm::LLVMContext context;
     llvm::IRBuilder<> builder;
     std::unique_ptr<llvm::Module> module;
-    std::map<std::string, llvm::Value*> named_values;
+    std::map<std::string, llvm::Value*> location;
 
     llvm::Value* tmp_v = nullptr;
     llvm::Value* tmp_p = nullptr;

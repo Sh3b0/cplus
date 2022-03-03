@@ -33,12 +33,13 @@
 %type <ast::np<ast::RoutineDeclaration>> ROUTINE_DECLARATION
 %type <std::vector<ast::np<ast::VariableDeclaration>>> PARAMETERS
 %type <ast::np<ast::Expression>> EXPRESSION
-%type <ast::np<ast::Type>> TYPE PRIMITIVE_TYPE
+%type <ast::np<ast::Type>> TYPE PRIMITIVE_TYPE ARRAY_TYPE
 %type <ast::np<ast::Body>> BODY
 %type <ast::np<ast::Statement>> STATEMENT
 %type <ast::np<ast::ReturnStatement>> RETURN_STATEMENT
 %type <ast::np<ast::PrintStatement>> PRINT_STATEMENT
 %type <ast::np<ast::AssignmentStatement>> ASSIGNMENT_STATEMENT
+%type <ast::np<ast::Identifier>> MP
 
 %left COMMA
 %right BECOMES
@@ -114,8 +115,14 @@ VARIABLE_DECLARATION:
     }
 ;
 
-EXPRESSION :
+
+MP :
     ID                                { $$ = std::make_shared<ast::Identifier>($1); }
+    | ID SB_L EXPRESSION SB_R         { $$ = std::make_shared<ast::Identifier>($1, $3); }
+;
+
+EXPRESSION :
+    MP                                { $$ = $1; }
     | INT_VAL                         { $$ = std::make_shared<ast::IntLiteral>($1); }
     | REAL_VAL                        { $$ = std::make_shared<ast::RealLiteral>($1); }
     | BOOL_VAL                        { $$ = std::make_shared<ast::BoolLiteral>($1); }
@@ -142,12 +149,18 @@ EXPRESSION :
 
 TYPE :
     PRIMITIVE_TYPE
+    | ARRAY_TYPE
 ;
 
 PRIMITIVE_TYPE:
     INT_KW    { $$ = std::make_shared<ast::IntType>(); }
     | REAL_KW { $$ = std::make_shared<ast::RealType>(); }
     | BOOL_KW { $$ = std::make_shared<ast::BoolType>(); }
+;
+
+ARRAY_TYPE : ARRAY SB_L EXPRESSION SB_R TYPE {
+    $$ = std::make_shared<ast::ArrayType>($3, $5);
+}
 ;
 
 ROUTINE_DECLARATION :
@@ -216,8 +229,8 @@ PRINT_STATEMENT :
 ;
 
 ASSIGNMENT_STATEMENT :
-    ID BECOMES EXPRESSION SEMICOLON {
-        $$ = std::make_shared<ast::AssignmentStatement>(std::make_shared<ast::Identifier>($1), $3);
+    MP BECOMES EXPRESSION SEMICOLON {
+        $$ = std::make_shared<ast::AssignmentStatement>($1, $3);
     }
 ;
 

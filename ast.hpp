@@ -23,6 +23,7 @@ struct Identifier;
 struct IntType;
 struct RealType;
 struct BoolType;
+struct ArrayType;
 struct IntLiteral;
 struct RealLiteral;
 struct BoolLiteral;
@@ -42,6 +43,7 @@ public:
     virtual void visit(ast::IntType *it) = 0;
     virtual void visit(ast::RealType *it) = 0;
     virtual void visit(ast::BoolType *it) = 0;
+    virtual void visit(ast::ArrayType *at) = 0;
     virtual void visit(ast::IntLiteral *il) = 0;
     virtual void visit(ast::RealLiteral *rl) = 0;
     virtual void visit(ast::BoolLiteral *bl) = 0;
@@ -62,7 +64,7 @@ namespace ast {
 template <typename T> using np = std::shared_ptr<T>;
 
 // Enumerations
-enum class TypeEnum { INT, REAL, BOOL }; // TODO ARRAY, RECORD
+enum class TypeEnum { INT, REAL, BOOL, ARRAY, RECORD };
 enum class OperatorEnum { PLUS, MINUS, MUL, DIV, MOD, AND, OR, NOT, XOR, EQ, NEQ, LT, GT, LEQ, GEQ }; 
 
 // Base class for AST nodes
@@ -96,22 +98,36 @@ struct Statement : virtual Node {
 
 // <Types>
 struct IntType : Type {
-    IntType() {};
+    IntType() {}
     TypeEnum getType() { return TypeEnum::INT; }
 
     void accept(Visitor* v) override { v->visit(this); }
 };
 
 struct RealType : Type {
-    RealType() {};
+    RealType() {}
     TypeEnum getType() { return TypeEnum::REAL; }
 
     void accept(Visitor* v) override { v->visit(this); }
 };
 
 struct BoolType : Type {
-    BoolType() {};
+    BoolType() {}
     TypeEnum getType() { return TypeEnum::BOOL; }
+
+    void accept(Visitor* v) override { v->visit(this); }
+};
+
+struct ArrayType : Type {
+    np<Expression> size;
+    np<Type> dtype;
+    
+    ArrayType(np<Expression> size, np<Type>dtype){
+        this->size = size;
+        this->dtype = dtype;
+    }
+
+    TypeEnum getType() { return TypeEnum::ARRAY; }
 
     void accept(Visitor* v) override { v->visit(this); }
 };
@@ -121,26 +137,31 @@ struct BoolType : Type {
 struct UnaryExpression : Expression {
     np<Expression> operand;
     OperatorEnum op;
+
     UnaryExpression(OperatorEnum op, np<Expression> operand) {
         this->operand = operand;
         this->op = op;
     }
+
     void accept(Visitor *v) override { v->visit(this); }
 };
 
 struct BinaryExpression : Expression {
     np<Expression> lhs, rhs;
     OperatorEnum op;
+
     BinaryExpression(np<Expression> lhs, OperatorEnum op, np<Expression> rhs) {
         this->lhs = lhs;
         this->rhs = rhs;
         this->op = op;
     }
+
     void accept(Visitor *v) override { v->visit(this); }
 };
 
 struct IntLiteral : Expression {
     int64_t value;
+
     IntLiteral(int64_t value) {
         this->dtype = std::make_shared<IntType>();
         this->value = value;
@@ -151,25 +172,40 @@ struct IntLiteral : Expression {
 
 struct RealLiteral : Expression {
     double value;
+
     RealLiteral(double value) {
         this->dtype = std::make_shared<RealType>();
         this->value = value;
     }
+
     void accept(Visitor* v) override { v->visit(this); }
 };
 
 struct BoolLiteral : Expression {
     bool value;
+
     BoolLiteral(bool value) {
         this->dtype = std::make_shared<BoolType>();
         this->value = value;
     }
+    
     void accept(Visitor* v) override { v->visit(this); }
 };
 
+// For variable, array element, or record field access.
 struct Identifier : Expression {
     std::string name;
-    Identifier(std::string name) { this->name = name; }
+    np<Expression> idx;
+    
+    Identifier(std::string name) {
+        this->name = name;
+    }
+    
+    Identifier(std::string name, np<Expression> idx) {
+        this->name = name;
+        this->idx = idx;
+    }
+
     void accept(Visitor *v) override { v->visit(this); }
 };
 

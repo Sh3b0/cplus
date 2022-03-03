@@ -1,6 +1,6 @@
 routine main() : integer is
-    var x is 5;
-    x := 4 + x;
-    print x;
+    var x : array[5] integer;
+    x[1] := 2 + 1;
+    print x[1] + 1; # 4
     return 0;
 end

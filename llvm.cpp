@@ -1,11 +1,15 @@
 #include "llvm.hpp"
 
+#define RED "\033[31m"
+#define MAGENTA "\033[35m"
+#define RESET "\033[0m"
+
 extern cplus::shell shell;
 
 // Constructor
 IRGenerator::IRGenerator() : builder(context) {
     module = std::make_unique<llvm::Module>(llvm::StringRef("ir.ll"), context);
-    std::cout << "\e[1m\033[35m"; // Bold Magenta Text
+    std::cout << MAGENTA;
 }
 
 // Emits IR code as "ir.ll"
@@ -64,66 +68,95 @@ void IRGenerator::visit(ast::Program *program) {
 void IRGenerator::visit(ast::VariableDeclaration *var) {
     if (shell.debug) std::cout << "[LLVM]: " << std::string(spaces++, ' ') << "<VariableDeclaration>" << std::endl;
    
-    // visit Type and extract it
     llvm::Type* dtype = nullptr;
-    if(var->dtype != nullptr) {
-        var->dtype->accept(this);
-        dtype = pop_tmp_t();
-    }
-    else {
-        if (var->iv == nullptr) {
-            std::cerr << "[LLVM]: Error: dtype not explicitly stated and no initial value given." << std::endl;
+
+    // var dtype is given
+    if (var->dtype != nullptr) {
+
+        // dtype is an array
+        if (var->dtype->getType() == ast::TypeEnum::ARRAY) {
+            
+            var->dtype->accept(this);           // array will be created by this visit,
+            location[var->name] = pop_tmp_p();  // save a pointer to the reserved location for later access.
             return;
         }
-        var->iv->accept(this);
-        dtype = pop_tmp_t();
-        if(dtype == nullptr) {
-            std::cerr << "[LLVM]: Error: Cannot deduce dtype for initializer" << std::endl;
+
+        // dtype is primitive
+        else if (var->dtype->getType() == ast::TypeEnum::INT  ||
+            var->dtype->getType() == ast::TypeEnum::REAL ||
+            var->dtype->getType() == ast::TypeEnum::BOOL) { 
+            var->dtype->accept(this);
+            dtype = pop_tmp_t();
+        }
+
+        // unknown dtype
+        else {
+            std::cerr << RESET << RED << "[LLVM]: Error: Unsupported data type for variable " << var->name << std::endl;
+            std::exit(1);
         }
     }
 
-    auto v = builder.CreateAlloca(dtype, nullptr, var->name);
+    // dtype is not given, deduce dtype from iv
+    else {
+        var->iv->accept(this);
+        dtype = pop_tmp_t();
+        
+        if(dtype == nullptr) {
+            std::cerr << RESET << RED << "[LLVM]: Error: Cannot deduce variable dtype from initializer" << std::endl;
+            std::exit(1);
+        }
+    }
+
+    // Allocate space for the (primitive) variable
+    auto p = builder.CreateAlloca(dtype, nullptr, var->name);
     
-    // auto v = new llvm::AllocaInst(dtype, 0, var->name);
-
-    // module->getOrInsertGlobal(var->name, dtype);
-    // llvm::GlobalVariable *v = module->getNamedGlobal(var->name);
-
-    // check type
-    // if (var->dtype->getType() == ast::TypeEnum::Array ||
-    //     var->dtype->getType() == ast::TypeEnum::Record) {
-    //     var->dtype->accept(this);
-    //     builder->CreateStore(pop_tmp_v(), v);
-    // } else {
+    // If an initial value was given, store it in the allocated space. 
     if (var->iv != nullptr) {
         var->iv->accept(this);
-        builder.CreateStore(pop_tmp_v(), v);
+        builder.CreateStore(pop_tmp_v(), p);
     }
-    // }
-
-    named_values[var->name] = v;
-    tmp_v = v;
-    // tmp_t = dtype;
+    
+    // Save var location for later reference
+    location[var->name] = p;
 
     if (shell.debug) std::cout << "[LLVM]: " << std::string(--spaces, ' ') << "</VariableDeclaration>" << std::endl;
 }
 
+// Sets tmp_p and optionally tmp_v and tmp_t
 void IRGenerator::visit(ast::Identifier* id) {
     std::cout << "[LLVM]: " << std::string(spaces++, ' ') << "<Identifier>" << std::endl;
 
-    auto v = named_values[id->name];
-    if (v == nullptr) {
-        std::cerr << "[LLVM]: Error: " << id->name << " is not declared." << std::endl;
-        return;
+    auto p = location[id->name];
+    if (p == nullptr) {
+        std::cerr << RESET << RED << "[LLVM]: Error: " << id->name << " is not declared." << std::endl;
+        std::exit(1);
     }
- 
-    tmp_v = builder.CreateLoad(v, id->name);
-    tmp_p = v;
-    tmp_t = tmp_v->getType();
+    
+    // accessing an array element
+    if(id->idx != nullptr) {
+        id->idx->accept(this);
+
+        // GetElementPointer (GEP) instruction will get the array element location. 
+        tmp_p = builder.CreateGEP(p, pop_tmp_v());
+    }
+
+    // accessing a primitive
+    else {
+        tmp_p = p;
+    }
+
+    // If a value is stored there, load it, otherwise leave tmp_v and tmp_t as nullptrs.
+    // Other visits such as PrintStatement should handle unassigned values.
+    auto val = builder.CreateLoad(tmp_p, id->name);
+    if(val != nullptr) {
+        tmp_v = val;
+        tmp_t = tmp_v->getType();
+    }
     
     std::cout << "[LLVM]: " << std::string(--spaces, ' ') << "</Identifier>" << std::endl;
 }
 
+// Sets tmp_v and tmp_t
 void IRGenerator::visit(ast::UnaryExpression* exp) {
     if (shell.debug) std::cout << "[LLVM]: " << std::string(spaces++, ' ') << "<UnaryExpression>" << std::endl;
     
@@ -151,6 +184,7 @@ void IRGenerator::visit(ast::UnaryExpression* exp) {
     if (shell.debug) std::cout << "[LLVM]: " << std::string(--spaces, ' ') << "</UnaryExpression>" << std::endl;
 }
 
+// Sets tmp_v and tmp_t
 void IRGenerator::visit(ast::BinaryExpression* exp) {
     if (shell.debug) std::cout << "[LLVM]: " << std::string(spaces++, ' ') << "<BinaryExpression>" << std::endl;
     exp->lhs->accept(this);
@@ -256,8 +290,8 @@ void IRGenerator::visit(ast::BinaryExpression* exp) {
             break;
         
         default:
-            std::cerr << "[LLVM]: Error: Unknown operator" << std::endl;
-            return;
+            std::cerr << RESET << RED << "[LLVM]: Error: Unknown operator" << std::endl;
+            std::exit(1);
     }
 
     if(bool_exp) {
@@ -285,6 +319,17 @@ void IRGenerator::visit(ast::BoolType *bt) {
     tmp_t = llvm::Type::getInt1Ty(context);
 }
 
+// Sets tmp_p (pointer to the beginning of array)
+void IRGenerator::visit(ast::ArrayType *at) {
+    at->size->accept(this);
+    auto size = pop_tmp_v();
+
+    at->dtype->accept(this);
+    auto dtype = pop_tmp_t();
+
+    tmp_p = builder.CreateAlloca(dtype, size);
+}
+
 void IRGenerator::visit(ast::IntLiteral *il) {
     tmp_v = llvm::ConstantInt::get(context, llvm::APInt(64, il->value, true));
 }
@@ -297,6 +342,7 @@ void IRGenerator::visit(ast::BoolLiteral *bl) {
     tmp_v = llvm::ConstantInt::get(context, llvm::APInt(1, bl->value, true));
 }
 
+// Sets tmp_v (the function pointer)
 void IRGenerator::visit(ast::RoutineDeclaration* routine) {
     if (shell.debug) std::cout << "[LLVM]: " << std::string(spaces++, ' ') << "<RoutineDeclaration>" << std::endl;
 
@@ -336,10 +382,10 @@ void IRGenerator::visit(ast::RoutineDeclaration* routine) {
     // Tell the builder that upcoming instructions should go into this block
     builder.SetInsertPoint(bb);
 
-    // Record the function arguments in the named_values map
-    named_values.clear();
+    // Record the function arguments in the location map
+    location.clear();
     for (auto& arg : fun->args()) {
-        named_values[arg.getName()] = &arg;
+        location[arg.getName()] = &arg;
     }
 
     routine->body->accept(this);
@@ -390,6 +436,12 @@ void IRGenerator::visit(ast::PrintStatement* stmt) {
 
     stmt->exp->accept(this);
     llvm::Value* to_print = pop_tmp_v();
+
+    if(to_print == nullptr) {
+        std::cerr << RESET << RED << "[LLVM]: Printing an unassigned value" << std::endl;
+        std::exit(1);
+    }
+
     llvm::Type* dtype = pop_tmp_t();
 
     // If printing a constant
@@ -406,9 +458,9 @@ void IRGenerator::visit(ast::PrintStatement* stmt) {
         fmt = "%f\n";
     }
     else {
-        std::cerr << "[LLVM]: Error: Cannot print " << std::flush;
+        std::cerr << RESET << RED << "[LLVM]: Error: Cannot print " << std::flush;
         to_print->print(llvm::errs());
-        return;
+        std::exit(1);
     }
     
     // Add function call code
@@ -435,10 +487,10 @@ void IRGenerator::visit(ast::PrintStatement* stmt) {
 
 void IRGenerator::visit(ast::AssignmentStatement* stmt) {
     stmt->id->accept(this);
-    auto id = pop_tmp_p();
+    auto id_loc = pop_tmp_p();
 
     stmt->exp->accept(this);
     auto exp = pop_tmp_v();
 
-    builder.CreateStore(exp, id);
+    builder.CreateStore(exp, id_loc);
 }
