@@ -449,6 +449,7 @@ void IRGenerator::visit(ast::RoutineDeclaration* routine) {
     if(routine->name == "main") {
         fmt_lld = builder->CreateGlobalStringPtr(llvm::StringRef("%lld\n"), "fmt_lld");
         fmt_f = builder->CreateGlobalStringPtr(llvm::StringRef("%f\n"), "fmt_f");
+        fmt_s = builder->CreateGlobalStringPtr(llvm::StringRef("%s\n"), "fmt_s");
     }
 
     routine->body->accept(this);
@@ -500,34 +501,46 @@ void IRGenerator::visit(ast::ReturnStatement* stmt) {
 void IRGenerator::visit(ast::PrintStatement* stmt) {
     BLOCK_B("PrintStatement")
 
-    stmt->exp->accept(this);
-    llvm::Value *to_print = pop_tmp_v();
-
-    if(to_print == nullptr) {
-        GERROR("Trying to print an unassigned value")
-    }
-
-    llvm::Type *dtype = pop_tmp_t();
-
-    // If printing a constant
-    if(dtype == nullptr) {
-        dtype = to_print->getType();
-    }
-    
-    // Format string for printf
+    llvm::Value *to_print;
+    llvm::Type *dtype;
     llvm::Constant *fmt;
-    if (dtype->isIntegerTy()) {
-        fmt = fmt_lld;
+
+    // Printing a constant string
+    if(stmt->str != "") {
+        fmt = fmt_s;
+        to_print = builder->CreateGlobalStringPtr(llvm::StringRef(stmt->str), "str");
     }
-    else if (dtype->isFloatingPointTy()) {
-        fmt = fmt_f;
-    }
+
+    // Printing an expression
     else {
-        std::cerr << RED << "[LLVM]: [ERROR]: Cannot print " << RESET << std::flush;
-        to_print->print(llvm::errs());
-        std::exit(1);
+        stmt->exp->accept(this);
+
+        // Get exp value
+        to_print = pop_tmp_v();
+        if(to_print == nullptr) {
+            GERROR("Trying to print an unassigned value")
+        }
+
+        // Get exp dtype
+        dtype = pop_tmp_t();
+        if(dtype == nullptr) { // Happens when printing a constant value
+            dtype = to_print->getType();
+        }
+        
+        // Setting format string for printf depending on exp type
+        if (dtype->isIntegerTy()) {
+            fmt = fmt_lld;
+        }
+        else if (dtype->isFloatingPointTy()) {
+            fmt = fmt_f;
+        }
+        else {
+            std::cerr << RED << "[LLVM]: [ERROR]: Cannot print " << RESET << std::flush;
+            to_print->print(llvm::errs());
+            std::exit(1);
+        }
     }
-    
+
     // Add function call code
     std::vector<llvm::Value*> tmp;
     tmp.push_back(fmt);

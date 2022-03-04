@@ -21,10 +21,10 @@
 %token AND OR XOR NOT                         // and or xor not
 %token LT GT EQ LEQ GEQ NEQ                   // < > = <= >= /=
 %token ARRAY RECORD ROUTINE RETURN END        // array record routine return end
-%token PRINT                                  // print
+%token PRINT STRING                           // print <string>
 %token IF THEN ELSE WHILE FOR IN LOOP REVERSE // if then else while for in loop reverse
 
-%type <std::string> ID
+%type <std::string> ID STRING
 %type <long long> INT_VAL
 %type <double> REAL_VAL
 %type <bool> BOOL_VAL
@@ -253,6 +253,10 @@ PRINT_STATEMENT :
     PRINT EXPRESSION SEMICOLON {
         PDEBUG("PRINT_STATEMENT")
         $$ = std::make_shared<ast::PrintStatement>($2);
+    }
+    | PRINT STRING SEMICOLON {
+        PDEBUG("PRINT_STATEMENT")
+        $$ = std::make_shared<ast::PrintStatement>($2.substr(1, $2.size()-2));
     }
 ;
 

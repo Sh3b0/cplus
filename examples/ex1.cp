@@ -1,4 +1,6 @@
 routine main() : integer is
+    print "Hello C+";
+
     var x is 5 + 5 * 3;
     var y is 5.0 - 5.0 * 4.0;
     var z is true and false;

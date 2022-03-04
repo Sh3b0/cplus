@@ -57,6 +57,7 @@ private:
 
     llvm::Constant *fmt_lld = nullptr;
     llvm::Constant *fmt_f = nullptr;
+    llvm::Constant *fmt_s = nullptr;
     
     std::map<ast::OperatorEnum, std::string> op_to_str = {
         { ast::OperatorEnum::PLUS, "+" },

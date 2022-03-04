@@ -285,6 +285,11 @@ false {
     return cplus::parser::make_INT_VAL(atoi(yytext));
 }
 
+"\"".*"\"" {
+    LDEBUG("STRING")
+    return cplus::parser::make_STRING(yytext);
+}
+
 <<EOF>> {
     LDEBUG("EOF")
     return 0;

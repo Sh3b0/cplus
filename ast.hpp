@@ -300,9 +300,14 @@ struct ReturnStatement : Statement {
 
 struct PrintStatement : Statement {
     np<Expression> exp;
+    std::string str;
 
     PrintStatement(np<Expression> exp) {
         this->exp = exp;
+    }
+
+    PrintStatement(std::string str) {
+        this->str = str;
     }
 
     void accept(Visitor* v) override { v->visit(this); }
