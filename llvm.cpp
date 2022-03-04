@@ -6,8 +6,8 @@
 #define RESET       "\033[0m"
 
 #define GDEBUG(X)   if (shell.debug) std::cout << CYAN << X << RESET << std::endl;
-#define GWARNING(X) std::cerr << RED << "[LLVM]: [ERROR]: " << X << RESET << std::endl;
-#define GERROR(X)   std::cerr << YELLOW << "[LLVM]: [WARNING]: " << X << RESET << std::endl; 
+#define GWARNING(X) std::cerr << YELLOW << "[LLVM]: [WARNING]: " << X << RESET << std::endl;
+#define GERROR(X)   std::cerr << RED << "[LLVM]: [ERROR]: " << X << RESET << std::endl; std::exit(1);
 
 #define BLOCK_B(X) \
     if (shell.debug){ \
@@ -28,8 +28,9 @@
 extern cplus::shell shell;
 
 // Constructor
-IRGenerator::IRGenerator() : builder(context) {
+IRGenerator::IRGenerator() {
     module = std::make_unique<llvm::Module>(llvm::StringRef("ir.ll"), context);
+    builder = std::make_unique<llvm::IRBuilder<>>(context);
 }
 
 // Emits IR code as "ir.ll"
@@ -50,32 +51,34 @@ void IRGenerator::generate() {
     module->print(outfile, nullptr);
 }
 
-llvm::Value* IRGenerator::pop_tmp_v() {
+llvm::Value *IRGenerator::pop_tmp_v() {
     auto v = tmp_v;
     tmp_v = nullptr;
     return v;
 }
 
-llvm::Value* IRGenerator::pop_tmp_p() {
+llvm::Value *IRGenerator::pop_tmp_p() {
     auto p = tmp_p;
     tmp_p = nullptr;
     return p;
 }
 
-llvm::Type* IRGenerator::pop_tmp_t() {
-    llvm::Type* t = tmp_t;
+llvm::Type *IRGenerator::pop_tmp_t() {
+    llvm::Type *t = tmp_t;
     tmp_t = nullptr;
     return t;
 }
 
 void IRGenerator::visit(ast::Program *program) {
     BLOCK_B("Program")
+    
     for (auto u : program->variables) {
         u->accept(this);
     }
     for (auto u : program->routines) {
         u->accept(this);
     }
+
     BLOCK_E("Program")
 }
 
@@ -83,7 +86,7 @@ void IRGenerator::visit(ast::Program *program) {
 void IRGenerator::visit(ast::VariableDeclaration *var) {
     BLOCK_B("VariableDeclaration")
 
-    llvm::Type* dtype = nullptr;
+    llvm::Type *dtype = nullptr;
 
     // var dtype is given
     if (var->dtype != nullptr) {
@@ -109,15 +112,24 @@ void IRGenerator::visit(ast::VariableDeclaration *var) {
         // dtype is primitive
         else if (var->dtype->getType() == ast::TypeEnum::INT  ||
             var->dtype->getType() == ast::TypeEnum::REAL ||
-            var->dtype->getType() == ast::TypeEnum::BOOL) { 
-            var->dtype->accept(this);
-            dtype = pop_tmp_t();
+            var->dtype->getType() == ast::TypeEnum::BOOL) {
+            if(var->iv != nullptr) { // iv is given, deduce dtype 
+                var->iv->accept(this);
+                dtype = pop_tmp_t();
+                
+                if(dtype == nullptr) {
+                    GERROR("Cannot deduce variable dtype from initializer")
+                }
+            }
+            else {
+                var->dtype->accept(this);
+                dtype = pop_tmp_t();
+            }
         }
 
         // unknown dtype
         else {
-            std::cerr << RED << "[LLVM]: Error: Unsupported data type for variable " << var->name << std::endl;
-            std::exit(1);
+            GERROR("Unsupported data type for variable" << var->name)
         }
     }
 
@@ -127,8 +139,8 @@ void IRGenerator::visit(ast::VariableDeclaration *var) {
         dtype = pop_tmp_t();
         
         if(dtype == nullptr) {
-            std::cerr << RED << "[LLVM]: Error: Cannot deduce variable dtype from initializer" << std::endl;
-            std::exit(1);
+            GERROR("Cannot deduce variable dtype from initializer")
+            
         }
     }
     
@@ -136,12 +148,12 @@ void IRGenerator::visit(ast::VariableDeclaration *var) {
     // llvm::GlobalVariable *v = module->getNamedGlobal(var->name);
 
     // Allocate space for the (primitive) variable
-    auto p = builder.CreateAlloca(dtype, nullptr, var->name);
+    auto p = builder->CreateAlloca(dtype, nullptr, var->name);
 
     // If an initial value was given, store it in the allocated space. 
     if (var->iv != nullptr) {
         var->iv->accept(this);
-        builder.CreateStore(pop_tmp_v(), p);
+        builder->CreateStore(pop_tmp_v(), p);
     }
     
     // Save var location for later reference
@@ -156,8 +168,7 @@ void IRGenerator::visit(ast::Identifier* id) {
 
     auto p = location[id->name];
     if (p == nullptr) {
-        std::cerr << RED << "[LLVM]: Error: " << id->name << " is not declared." << std::endl;
-        std::exit(1);
+        GERROR(id->name << " is not declared.")
     }
     
     // accessing an array element
@@ -165,7 +176,7 @@ void IRGenerator::visit(ast::Identifier* id) {
         id->idx->accept(this);
 
         // GetElementPointer (GEP) instruction will get the array element location. 
-        tmp_p = builder.CreateGEP(p, pop_tmp_v());
+        tmp_p = builder->CreateGEP(p, pop_tmp_v());
     }
 
     // accessing a primitive or a record field
@@ -175,7 +186,7 @@ void IRGenerator::visit(ast::Identifier* id) {
 
     // If a value is stored there, load it, otherwise leave tmp_v and tmp_t as nullptrs.
     // Other visits such as PrintStatement should handle unassigned values.
-    auto val = builder.CreateLoad(tmp_p, id->name);
+    auto val = builder->CreateLoad(tmp_p, id->name);
     if(val != nullptr) {
         tmp_v = val;
         tmp_t = tmp_v->getType();
@@ -194,17 +205,17 @@ void IRGenerator::visit(ast::UnaryExpression* exp) {
     switch (exp->op) {
         case ast::OperatorEnum::MINUS:
             if(O->getType()->isFloatingPointTy()) {
-                tmp_v = builder.CreateFNeg(O, "negtmp");
+                tmp_v = builder->CreateFNeg(O, "negtmp");
                 tmp_t = llvm::Type::getDoubleTy(context);
             }
             else {
-                tmp_v = builder.CreateNeg(O, "negtmp");
+                tmp_v = builder->CreateNeg(O, "negtmp");
                 tmp_t = llvm::Type::getInt64Ty(context);
             }
             break;
 
         case ast::OperatorEnum::NOT:
-            tmp_v = builder.CreateNot(O, "nottmp");
+            tmp_v = builder->CreateNot(O, "nottmp");
             tmp_t = llvm::Type::getInt1Ty(context);
             break;
     }
@@ -232,11 +243,11 @@ void IRGenerator::visit(ast::BinaryExpression* exp) {
     bool float_exp = false, bool_exp = false;
     if(L->getType()->isFloatingPointTy() && R->getType()->isIntegerTy()){
         float_exp = true;
-        R = builder.CreateUIToFP(R, llvm::Type::getDoubleTy(context));
+        R = builder->CreateUIToFP(R, llvm::Type::getDoubleTy(context));
     }
     else if(L->getType()->isIntegerTy() && R->getType()->isFloatingPointTy()){
         float_exp = true;
-        L = builder.CreateUIToFP(L, llvm::Type::getDoubleTy(context));
+        L = builder->CreateUIToFP(L, llvm::Type::getDoubleTy(context));
     }
     else if (L->getType()->isFloatingPointTy() && R->getType()->isFloatingPointTy()){
         float_exp = true;
@@ -244,83 +255,82 @@ void IRGenerator::visit(ast::BinaryExpression* exp) {
 
     switch (exp->op) {
         case ast::OperatorEnum::PLUS:
-            if(float_exp) tmp_v = builder.CreateFAdd(L, R, "addtmp");
-            else tmp_v = builder.CreateAdd(L, R, "addtmp"); 
+            if(float_exp) tmp_v = builder->CreateFAdd(L, R, "addtmp");
+            else tmp_v = builder->CreateAdd(L, R, "addtmp"); 
             break;
 
         case ast::OperatorEnum::MINUS:
-            if(float_exp) tmp_v = builder.CreateFSub(L, R, "subtmp");
-            else tmp_v = builder.CreateSub(L, R, "subtmp");
+            if(float_exp) tmp_v = builder->CreateFSub(L, R, "subtmp");
+            else tmp_v = builder->CreateSub(L, R, "subtmp");
             break;
         
         case ast::OperatorEnum::MUL:
-            if(float_exp) tmp_v = builder.CreateFMul(L, R, "multmp");
-            else tmp_v = builder.CreateMul(L, R, "multmp");
+            if(float_exp) tmp_v = builder->CreateFMul(L, R, "multmp");
+            else tmp_v = builder->CreateMul(L, R, "multmp");
             break;
 
         case ast::OperatorEnum::DIV:
-            if(float_exp) tmp_v = builder.CreateFDiv(L, R, "divtmp");
-            else tmp_v = builder.CreateSDiv(L, R, "divtmp");
+            if(float_exp) tmp_v = builder->CreateFDiv(L, R, "divtmp");
+            else tmp_v = builder->CreateSDiv(L, R, "divtmp");
             break;
         
         case ast::OperatorEnum::MOD:
-            tmp_v = builder.CreateSRem(L, R, "remtmp");
+            tmp_v = builder->CreateSRem(L, R, "remtmp");
             break;
 
         case ast::OperatorEnum::AND:
             bool_exp = true;
-            tmp_v = builder.CreateAnd(L, R, "andtmp");
+            tmp_v = builder->CreateAnd(L, R, "andtmp");
             break;
 
         case ast::OperatorEnum::OR:
             bool_exp = true;
-            tmp_v = builder.CreateOr(L, R, "ortmp");
+            tmp_v = builder->CreateOr(L, R, "ortmp");
             break;
         
         case ast::OperatorEnum::XOR:
             bool_exp = true;
-            tmp_v = builder.CreateXor(L, R, "xortmp");
+            tmp_v = builder->CreateXor(L, R, "xortmp");
             break;
         
         case ast::OperatorEnum::EQ:
             bool_exp = true;
-            if(float_exp) tmp_v = builder.CreateFCmpUEQ(L, R, "eqtmp");
-            else tmp_v = builder.CreateICmpEQ(L, R, "eqtmp");
+            if(float_exp) tmp_v = builder->CreateFCmpUEQ(L, R, "eqtmp");
+            else tmp_v = builder->CreateICmpEQ(L, R, "eqtmp");
             break;
 
         case ast::OperatorEnum::NEQ:
             bool_exp = true;
-            if(float_exp) tmp_v = builder.CreateFCmpUNE(L, R, "netmp");
-            else tmp_v = builder.CreateICmpNE(L, R, "netmp");
+            if(float_exp) tmp_v = builder->CreateFCmpUNE(L, R, "netmp");
+            else tmp_v = builder->CreateICmpNE(L, R, "netmp");
             break;
 
         case ast::OperatorEnum::GT:
             bool_exp = true;
-            if(float_exp) tmp_v = builder.CreateFCmpUGT(L, R, "gttmp");
-            else tmp_v = builder.CreateICmpSGT(L, R, "gttmp");
+            if(float_exp) tmp_v = builder->CreateFCmpUGT(L, R, "gttmp");
+            else tmp_v = builder->CreateICmpSGT(L, R, "gttmp");
             break;
 
         case ast::OperatorEnum::LT:
             bool_exp = true;
-            if(float_exp) tmp_v = builder.CreateFCmpULT(L, R, "lttmp");
-            else tmp_v = builder.CreateICmpSLT(L, R, "lttmp");
+            if(float_exp) tmp_v = builder->CreateFCmpULT(L, R, "lttmp");
+            else tmp_v = builder->CreateICmpSLT(L, R, "lttmp");
             break;
         
         case ast::OperatorEnum::GEQ:
             bool_exp = true;
-            if(float_exp) tmp_v = builder.CreateFCmpUGE(L, R, "geqtmp");
-            else tmp_v = builder.CreateICmpSGE(L, R, "geqtmp");
+            if(float_exp) tmp_v = builder->CreateFCmpUGE(L, R, "geqtmp");
+            else tmp_v = builder->CreateICmpSGE(L, R, "geqtmp");
             break;
         
         case ast::OperatorEnum::LEQ:
             bool_exp = true;
-            if(float_exp) tmp_v = builder.CreateFCmpULE(L, R, "leqtmp");
-            else tmp_v = builder.CreateICmpSLE(L, R, "leqtmp");
+            if(float_exp) tmp_v = builder->CreateFCmpULE(L, R, "leqtmp");
+            else tmp_v = builder->CreateICmpSLE(L, R, "leqtmp");
             break;
         
         default:
-            std::cerr << RED << "[LLVM]: Error: Unknown operator" << std::endl;
-            std::exit(1);
+            GERROR("Unknown operator encountered")
     }
 
     if(bool_exp) {
@@ -358,7 +368,7 @@ void IRGenerator::visit(ast::ArrayType *at) {
     at->dtype->accept(this);
     auto dtype = pop_tmp_t();
 
-    tmp_p = builder.CreateAlloca(dtype, size);
+    tmp_p = builder->CreateAlloca(dtype, size);
 
     BLOCK_E("ArrayType")
 }
@@ -376,14 +386,17 @@ void IRGenerator::visit(ast::RecordType *rt) {
 
 void IRGenerator::visit(ast::IntLiteral *il) {
     tmp_v = llvm::ConstantInt::get(context, llvm::APInt(64, il->value, true));
+    tmp_t = llvm::Type::getInt64Ty(context);
 }
 
 void IRGenerator::visit(ast::RealLiteral *rl) {
     tmp_v = llvm::ConstantFP::get(context, llvm::APFloat(rl->value));
+    tmp_t = llvm::Type::getDoubleTy(context);
 }
 
 void IRGenerator::visit(ast::BoolLiteral *bl) {
     tmp_v = llvm::ConstantInt::get(context, llvm::APInt(1, bl->value, true));
+    tmp_t = llvm::Type::getInt1Ty(context);
 }
 
 // Sets tmp_v (the function pointer)
@@ -398,14 +411,14 @@ void IRGenerator::visit(ast::RoutineDeclaration* routine) {
     }
 
     // The routine's return type
-    llvm::Type* rtype = llvm::Type::getVoidTy(context);
+    llvm::Type *rtype = llvm::Type::getVoidTy(context);
     if (routine->rtype != nullptr) {
         routine->rtype->accept(this);
         rtype = pop_tmp_t();
     }
 
     // The function's type: (return type, parameter types, varargs?)
-    llvm::FunctionType* ft = llvm::FunctionType::get(rtype, paramTypes, false);
+    llvm::FunctionType *ft = llvm::FunctionType::get(rtype, paramTypes, false);
 
     // The actual function from the type, local to this module, with the given name
     llvm::Function* fun = llvm::Function::Create(
@@ -424,12 +437,18 @@ void IRGenerator::visit(ast::RoutineDeclaration* routine) {
     llvm::BasicBlock* bb = llvm::BasicBlock::Create(context, "entry", fun);
 
     // Tell the builder that upcoming instructions should go into this block
-    builder.SetInsertPoint(bb);
+    builder->SetInsertPoint(bb);
 
     // Record the function arguments in the location map
     location.clear();
     for (auto& arg : fun->args()) {
         location[arg.getName()] = &arg;
+    }
+
+    // Create globals needed for Print
+    if(routine->name == "main") {
+        fmt_lld = builder->CreateGlobalStringPtr(llvm::StringRef("%lld\n"), "fmt_lld");
+        fmt_f = builder->CreateGlobalStringPtr(llvm::StringRef("%f\n"), "fmt_f");
     }
 
     routine->body->accept(this);
@@ -468,12 +487,12 @@ void IRGenerator::visit(ast::Body* body) {
 void IRGenerator::visit(ast::ReturnStatement* stmt) {
     BLOCK_B("ReturnStatement")
 
-    llvm::Value* rval = nullptr;
+    llvm::Value *rval = nullptr;
     if (stmt->exp != nullptr) {
         stmt->exp->accept(this);
         rval = pop_tmp_v();
     }
-    builder.CreateRet(rval);
+    builder->CreateRet(rval);
 
     BLOCK_E("ReturnStatement")
 }
@@ -482,14 +501,13 @@ void IRGenerator::visit(ast::PrintStatement* stmt) {
     BLOCK_B("PrintStatement")
 
     stmt->exp->accept(this);
-    llvm::Value* to_print = pop_tmp_v();
+    llvm::Value *to_print = pop_tmp_v();
 
     if(to_print == nullptr) {
-        std::cerr << RED << "[LLVM]: Printing an unassigned value" << std::endl;
-        std::exit(1);
+        GERROR("Trying to print an unassigned value")
     }
 
-    llvm::Type* dtype = pop_tmp_t();
+    llvm::Type *dtype = pop_tmp_t();
 
     // If printing a constant
     if(dtype == nullptr) {
@@ -497,22 +515,22 @@ void IRGenerator::visit(ast::PrintStatement* stmt) {
     }
     
     // Format string for printf
-    std::string fmt;
+    llvm::Constant *fmt;
     if (dtype->isIntegerTy()) {
-        fmt = "%lld\n";
+        fmt = fmt_lld;
     }
     else if (dtype->isFloatingPointTy()) {
-        fmt = "%f\n";
+        fmt = fmt_f;
     }
     else {
-        std::cerr << RED << "[LLVM]: Error: Cannot print " << std::flush;
+        std::cerr << RED << "[LLVM]: [ERROR]: Cannot print " << RESET << std::flush;
         to_print->print(llvm::errs());
         std::exit(1);
     }
     
     // Add function call code
     std::vector<llvm::Value*> tmp;
-    tmp.push_back(builder.CreateGlobalStringPtr(llvm::StringRef(fmt), "_"));
+    tmp.push_back(fmt);
     tmp.push_back(to_print);
     auto args = llvm::ArrayRef<llvm::Value*>(tmp);
 
@@ -527,7 +545,7 @@ void IRGenerator::visit(ast::PrintStatement* stmt) {
     );
     
     // Create function call
-    builder.CreateCall(print, args, "printfCall");
+    builder->CreateCall(print, args, "printfCall");
 
     BLOCK_E("PrintStatement")
 }
@@ -535,25 +553,49 @@ void IRGenerator::visit(ast::PrintStatement* stmt) {
 void IRGenerator::visit(ast::AssignmentStatement* stmt) {
     BLOCK_B("AssignmentStatement")
 
+    // id_loc is a pointer to the modifiable_primary to be accessed
     stmt->id->accept(this);
     auto id_loc = pop_tmp_p();
 
+    // exp is a Value* containing the new data
     stmt->exp->accept(this);
     auto exp = pop_tmp_v();
 
-    // id_loc is a pointer to the modifiable_primary to be accessed
-    // exp is a Value* containing the new data
+    auto lhs_t = builder->CreateLoad(id_loc)->getType();
+    auto rhs_t = exp->getType();
 
-    // TODO: type checks and casts.
-
-    // auto lhs_t = builder.CreateLoad(id_loc, "id*")->getType();
-    // auto rhs_t = exp->getType();
+    auto int_t = llvm::Type::getInt64Ty(context);
+    auto real_t = llvm::Type::getDoubleTy(context);
+    auto bool_t = llvm::Type::getInt1Ty(context);
     
-    // if(lhs_t == llvm::Type::getInt64Ty(context) && rhs_t == llvm::Type::getDoubleTy(context)) {
-    //     exp = builder.CreateCast(llvm::CastInst::get)
-    // }
-
-    builder.CreateStore(exp, id_loc);
+    if(lhs_t == int_t && rhs_t == real_t) { // real -> int
+        exp = builder->CreateFPToSI(exp, lhs_t, "intcast");
+    }
+    else if(lhs_t == bool_t && rhs_t == real_t) { // real -> bool
+        exp = builder->CreateFPToSI(exp, lhs_t, "boolcast");
+    }
+    else if(lhs_t == real_t && rhs_t == int_t) { // int -> real
+        exp = builder->CreateSIToFP(exp, lhs_t, "fpcast");
+    }
+    else if(lhs_t == bool_t && rhs_t == int_t) { // int -> bool
+        exp = builder->CreateICmpNE(exp, llvm::ConstantInt::get(context, llvm::APInt(64, 0)), "boolcast");
+    }
+    else if(lhs_t == int_t && rhs_t == bool_t) { // bool -> int
+        exp = builder->CreateIntCast(exp, lhs_t, false);
+    }
+    else if(lhs_t == real_t && rhs_t == bool_t) { // bool -> real
+        exp = builder->CreateFPCast(exp, lhs_t);
+    }
+    else if(lhs_t != rhs_t) {
+        std::cerr << RED << "[LLVM]: [ERROR]: Unsupported conversion: ";
+        lhs_t->print(llvm::errs());
+        std::cerr << " -> ";
+        rhs_t->print(llvm::errs());
+        std::cerr << std::endl;
+        std::exit(1);
+    }
+    
+    builder->CreateStore(exp, id_loc);
 
     BLOCK_E("AssignmentStatement")
 }
@@ -562,20 +604,21 @@ void IRGenerator::visit(ast::IfStatement* stmt) {
     BLOCK_B("IfStatement")
 
     stmt->cond->accept(this);
-    llvm::Value* cond = pop_tmp_v();
+    llvm::Value *cond = pop_tmp_v();
 
-    if (cond->getType()->isFloatingPointTy()) {
-        std::cerr << RED << "[LLVM]: Error: If condition cannot be a real expression" << std::endl;
-        exit(1);
+    if(!cond->getType()->isIntegerTy() ||
+        !(cond->getType()->getIntegerBitWidth() == 64 ||
+        cond->getType()->getIntegerBitWidth() == 1)) {
+        GERROR("condition expression is not of integer or boolean type")
     }
 
-    // If cond is of IntegerType, compare it to 0 to create bool.
+    // If cond is of type int64, compare it to 0 to create bool.
     if(cond->getType()->getIntegerBitWidth() == 64){
-        cond = builder.CreateICmpNE(cond, llvm::ConstantInt::get(context, llvm::APInt(64, 0)), "cond");
+        cond = builder->CreateICmpNE(cond, llvm::ConstantInt::get(context, llvm::APInt(64, 0)), "cond");
     }
 
     // Get the current function
-    llvm::Function* func = builder.GetInsertBlock()->getParent();
+    llvm::Function* func = builder->GetInsertBlock()->getParent();
 
     // Create blocks for the then, else, endif.
     llvm::BasicBlock* then_block = llvm::BasicBlock::Create(context, "then", func);
@@ -583,32 +626,32 @@ void IRGenerator::visit(ast::IfStatement* stmt) {
     llvm::BasicBlock* endif = llvm::BasicBlock::Create(context, "endif");
 
     // Create the conditional statement
-    builder.CreateCondBr(cond, then_block, else_block ? else_block : endif);
+    builder->CreateCondBr(cond, then_block, else_block ? else_block : endif);
 
     // Then block
     {
-        builder.SetInsertPoint(then_block);
+        builder->SetInsertPoint(then_block);
         stmt->then_body->accept(this);
-        builder.CreateBr(endif);
+        builder->CreateBr(endif);
         
-        then_block = builder.GetInsertBlock();
+        then_block = builder->GetInsertBlock();
     }
     
     // Else block
     if(else_block) {
         func->getBasicBlockList().push_back(else_block);
 
-        builder.SetInsertPoint(else_block);
+        builder->SetInsertPoint(else_block);
         stmt->else_body->accept(this);
-        builder.CreateBr(endif);
+        builder->CreateBr(endif);
 
-        else_block = builder.GetInsertBlock();
+        else_block = builder->GetInsertBlock();
     }
 
     // Endif
     {
         func->getBasicBlockList().push_back(endif);
-        builder.SetInsertPoint(endif);
+        builder->SetInsertPoint(endif);
     }
     
     BLOCK_E("IfStatement")

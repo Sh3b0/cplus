@@ -41,20 +41,23 @@ public:
 
 private:
     llvm::LLVMContext context;
-    llvm::IRBuilder<> builder;
+    std::unique_ptr<llvm::IRBuilder<>> builder;
     std::unique_ptr<llvm::Module> module;
     std::map<std::string, llvm::Value*> location;
 
-    llvm::Value* tmp_v = nullptr;
-    llvm::Value* tmp_p = nullptr;
-    llvm::Type* tmp_t = nullptr;
+    llvm::Value *tmp_v = nullptr;
+    llvm::Value *tmp_p = nullptr;
+    llvm::Type *tmp_t = nullptr;
 
     int spaces = 0;
 
-    llvm::Value* pop_tmp_v();
-    llvm::Value* pop_tmp_p();
-    llvm::Type* pop_tmp_t();
+    llvm::Value *pop_tmp_v();
+    llvm::Value *pop_tmp_p();
+    llvm::Type *pop_tmp_t();
 
+    llvm::Constant *fmt_lld = nullptr;
+    llvm::Constant *fmt_f = nullptr;
+    
     std::map<ast::OperatorEnum, std::string> op_to_str = {
         { ast::OperatorEnum::PLUS, "+" },
         { ast::OperatorEnum::MINUS, "-" },
