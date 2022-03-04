@@ -16,7 +16,7 @@
 %token VAR ID IS INT_VAL REAL_VAL BOOL_VAL    // var <identifier> is \d+ \d+\.\d+ true|false
 %token TYPE_KW INT_KW REAL_KW BOOL_KW         // type integer real boolean
 %token B_L B_R SB_L SB_R CB_L CB_R            // ( ) [ ] { }
-%token COLON SEMICOLON COMMA DOT DDOT BECOMES // : ; , . .. :=
+%token COLON SEMICOLON COMMA DDOT BECOMES     // : ; , . .. :=
 %token PLUS MINUS MUL DIV MOD                 // + - * / %
 %token AND OR XOR NOT                         // and or xor not
 %token LT GT EQ LEQ GEQ NEQ                   // < > = <= >= /=
@@ -31,8 +31,7 @@
 
 %type <ast::np<ast::VariableDeclaration>> VARIABLE_DECLARATION PARAMETER_DECLARATION
 %type <ast::np<ast::RoutineDeclaration>> ROUTINE_DECLARATION
-%type <std::vector<ast::np<ast::VariableDeclaration>>> PARAMETERS
-%type <std::map<std::string, ast::np<ast::VariableDeclaration>>> VARIABLE_DECLARATIONS
+%type <std::vector<ast::np<ast::VariableDeclaration>>> PARAMETERS VARIABLE_DECLARATIONS
 %type <ast::np<ast::Expression>> EXPRESSION
 %type <ast::np<ast::Type>> TYPE PRIMITIVE_TYPE ARRAY_TYPE RECORD_TYPE
 %type <ast::np<ast::Body>> BODY
@@ -52,7 +51,6 @@
 %left PLUS MINUS
 %left MUL DIV MOD
 %right NOT
-%left DOT
 
 %start PROGRAM
 
@@ -129,7 +127,6 @@ VARIABLE_DECLARATION:
 MODIFIABLE_PRIMARY :
     ID                                { $$ = std::make_shared<ast::Identifier>($1); }
     | ID SB_L EXPRESSION SB_R         { $$ = std::make_shared<ast::Identifier>($1, $3); }
-    | ID DOT ID                       { $$ = std::make_shared<ast::Identifier>($1, $3); }
 ;
 
 EXPRESSION :
@@ -184,11 +181,11 @@ RECORD_TYPE : RECORD CB_L VARIABLE_DECLARATIONS CB_R END {
 
 VARIABLE_DECLARATIONS:
     %empty {
-        std::map<std::string, ast::np<ast::VariableDeclaration>> tmp;
+        std::vector<ast::np<ast::VariableDeclaration>> tmp;
         $$ = tmp;
     }
     | VARIABLE_DECLARATION SEMICOLON_SEPARATOR VARIABLE_DECLARATIONS {
-        $3[$1->name] = $1;
+        $3.push_back($1);
         $$ = $3;
     }
 ;

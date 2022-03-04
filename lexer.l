@@ -16,11 +16,11 @@
 
 digit      [0-9]
 alpha      [a-zA-Z_]
-alphanum   [a-zA-Z_0-9]
+alphanum   [a-zA-Z_0-9\.]
 
 %%
 
-#.*     ;       /* ignore comments */
+#.* ; /* ignore comments */
 
 [ \t]+ {
     LDEBUG(" ")
@@ -218,11 +218,6 @@ alphanum   [a-zA-Z_0-9]
 "}" {
     LDEBUG("CB_R")
     return cplus::parser::make_CB_R();
-}
-
-"." {
-    LDEBUG("DOT")
-    return cplus::parser::make_DOT();
 }
 
 ".." {

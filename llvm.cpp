@@ -79,6 +79,7 @@ void IRGenerator::visit(ast::Program *program) {
     BLOCK_E("Program")
 }
 
+// Stores a pointer to the created var in location map.
 void IRGenerator::visit(ast::VariableDeclaration *var) {
     BLOCK_B("VariableDeclaration")
 
@@ -89,9 +90,19 @@ void IRGenerator::visit(ast::VariableDeclaration *var) {
 
         // dtype is an array
         if (var->dtype->getType() == ast::TypeEnum::ARRAY) {
-            
             var->dtype->accept(this);           // array will be created by this visit,
-            location[var->name] = pop_tmp_p();  // save a pointer to the reserved location for later access.
+            location[var->name] = pop_tmp_p();  // save a pointer to the array location for later access.
+            BLOCK_E("VariableDeclaration")
+            return;
+        }
+
+        // dtype is a record
+        else if (var->dtype->getType() == ast::TypeEnum::RECORD) {
+            // downcasting np<Type> --> np<RecordType>
+            auto t = std::dynamic_pointer_cast<ast::RecordType>(var->dtype); 
+            t->name = var->name;
+            t->accept(this);  // record fields will be created by this visit with "{var->name}." prefix.
+            BLOCK_E("VariableDeclaration")
             return;
         }
 
@@ -157,7 +168,7 @@ void IRGenerator::visit(ast::Identifier* id) {
         tmp_p = builder.CreateGEP(p, pop_tmp_v());
     }
 
-    // accessing a primitive
+    // accessing a primitive or a record field
     else {
         tmp_p = p;
     }
@@ -355,7 +366,10 @@ void IRGenerator::visit(ast::ArrayType *at) {
 void IRGenerator::visit(ast::RecordType *rt) {
     BLOCK_B("RecordType")
 
-    // TODO
+    for(auto field : rt->fields) {
+        field->name = rt->name + "." + field->name;
+        field->accept(this); // Creates a var with name "{rt->name}.{field->name}"
+    }
 
     BLOCK_E("RecordType")
 }
@@ -552,7 +566,7 @@ void IRGenerator::visit(ast::IfStatement* stmt) {
 
     if (cond->getType()->isFloatingPointTy()) {
         std::cerr << RED << "[LLVM]: Error: If condition cannot be a real expression" << std::endl;
-        return;
+        exit(1);
     }
 
     // If cond is of IntegerType, compare it to 0 to create bool.

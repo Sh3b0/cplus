@@ -132,9 +132,10 @@ struct ArrayType : Type {
 };
 
 struct RecordType : Type {
-    std::map<std::string, np<VariableDeclaration>> fields;
+    std::string name; // set by llvm vardecl or typedecl
+    std::vector<np<VariableDeclaration>> fields;
     
-    RecordType(std::map<std::string, np<VariableDeclaration>> fields){
+    RecordType(std::vector<np<VariableDeclaration>> fields){
         this->fields = fields;
     }
 
@@ -204,10 +205,10 @@ struct BoolLiteral : Expression {
 };
 
 struct Identifier : Expression {
-    std::string name, field;
+    std::string name;
     np<Expression> idx;
     
-    // variable access
+    // variable or record field access
     Identifier(std::string name) {
         this->name = name;
     }
@@ -216,12 +217,6 @@ struct Identifier : Expression {
     Identifier(std::string name, np<Expression> idx) {
         this->name = name;
         this->idx = idx;
-    }
-
-    // record field access
-    Identifier(std::string name, std::string field) {
-        this->name = name;
-        this->field = field;
     }
 
     void accept(Visitor *v) override { v->visit(this); }

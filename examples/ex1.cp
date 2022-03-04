@@ -9,11 +9,29 @@ routine main() : integer is
     print 5 / 2;      # 2
     print 5.0 / 2.0;  # 2.5
 
-    if x = y then
+    var t is x + 1;
+
+    if x = t - 1 then
         print 1;
     else
         print 2;
     end
+
+    var overkill : record {
+        var f1 : integer;
+        var f2 : record {
+            var f3 : integer;
+            var f4 : array[3] real; 
+        } end
+        ;
+    } end
+    ;
+
+    overkill.f1 := 1;
+    overkill.f2.f3 := 2;
+    overkill.f2.f4[1] := 3.5;
+
+    print overkill.f1 + overkill.f2.f3 + overkill.f2.f4[1] + 1;
 
     return 0;
 end

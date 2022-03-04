@@ -17,7 +17,7 @@ extern ast::np<ast::Program> program;
 
 int main(int argc, char **argv) {
     
-    std::cout << "\n\n" << YELLOW << "[LEXER]" << RESET << " and " << GREEN << "[PARSER]:" << RESET << std::endl;
+    std::cout << "\n\n" << YELLOW << "[LEXER]" << RESET << " and " << GREEN << "[PARSER]" << RESET << ":" << std::endl;
     
     if (shell.parse_args(argc, argv)) {
         std::cerr << RESET << RED << "Error parsing arguments\n";
