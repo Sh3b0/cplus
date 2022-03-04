@@ -1,6 +1,7 @@
 #ifndef LLVM_H
 #define LLVM_H
 
+#include <llvm/IR/Module.h>
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/Verifier.h>
@@ -23,6 +24,7 @@ public:
     void visit(ast::RealType *rt) override;
     void visit(ast::BoolType *bt) override;
     void visit(ast::ArrayType *at) override;
+    void visit(ast::RecordType *rt) override;
     void visit(ast::IntLiteral *il) override;
     void visit(ast::RealLiteral *rl) override;
     void visit(ast::BoolLiteral *bl) override;
@@ -35,6 +37,7 @@ public:
     void visit(ast::ReturnStatement *stmt) override;
     void visit(ast::PrintStatement *stmt) override;
     void visit(ast::AssignmentStatement *stmt) override;
+    void visit(ast::IfStatement *stmt) override;
 
 private:
     llvm::LLVMContext context;

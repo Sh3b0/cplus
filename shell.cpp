@@ -56,15 +56,15 @@ int shell::parse_args(int argc, char **argv) {
 }
 
 int shell::print_ast() {
-    std::cout << "[AST]: Routines: ";
+    std::cout << "Program routines: ";
     for(auto u:program->routines)
         std::cout << u->name << " ";
 
-    std::cout << "\n[AST]: Global variables: ";
+    std::cout << "\nGlobal variables: ";
     for(auto u:program->variables)
         std::cout << u->name << " ";
     
-    std::cout << std::endl;
+    std::cout << '\n' << std::endl;
 
     return 0;
 }

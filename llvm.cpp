@@ -1,21 +1,39 @@
 #include "llvm.hpp"
 
-#define RED "\033[31m"
-#define MAGENTA "\033[35m"
-#define RESET "\033[0m"
+#define RED         "\033[31m"
+#define CYAN        "\033[36m"
+#define YELLOW      "\033[33m"
+#define RESET       "\033[0m"
+
+#define GDEBUG(X)   if (shell.debug) std::cout << CYAN << X << RESET << std::endl;
+#define GWARNING(X) std::cerr << RED << "[LLVM]: [ERROR]: " << X << RESET << std::endl;
+#define GERROR(X)   std::cerr << YELLOW << "[LLVM]: [WARNING]: " << X << RESET << std::endl; 
+
+#define BLOCK_B(X) \
+    if (shell.debug){ \
+        std::cout << CYAN; \
+        for(int i=0; i<spaces; i++) i % 4 ? std::cout << " " : std::cout << "|"; \
+        std::cout << "<" << X << ">" << RESET << std::endl; \
+        spaces += 4; \
+    }
+
+#define BLOCK_E(X) \
+    if (shell.debug){ \
+        spaces -= 4; \
+        std::cout << CYAN; \
+        for(int i=0; i<spaces; i++) i % 4 ? std::cout << " " : std::cout << "|"; \
+        std::cout << "</" << X << ">" << RESET << std::endl; \
+    }
 
 extern cplus::shell shell;
 
 // Constructor
 IRGenerator::IRGenerator() : builder(context) {
     module = std::make_unique<llvm::Module>(llvm::StringRef("ir.ll"), context);
-    std::cout << MAGENTA;
 }
 
 // Emits IR code as "ir.ll"
 void IRGenerator::generate() {
-    if (shell.debug) std::cout << "[LLVM]: <IRGenerator>" << std::endl;
-
     auto CPU = "generic";
     auto Features = "";
 
@@ -24,14 +42,12 @@ void IRGenerator::generate() {
     std::string msg;
     llvm::raw_string_ostream out(msg);
     if(llvm::verifyModule(*this->module, &out)) {
-        llvm::errs() << "[LLVM]: Warning: " << out.str();
+        GWARNING(out.str())
     }
 
     FILE* f = fopen("ir.ll", "w");
     llvm::raw_fd_ostream outfile(fileno(f), true);
     module->print(outfile, nullptr);
-
-    if (shell.debug) std::cout << "[LLVM]: </IRGenerator>" << std::endl;
 }
 
 llvm::Value* IRGenerator::pop_tmp_v() {
@@ -53,21 +69,19 @@ llvm::Type* IRGenerator::pop_tmp_t() {
 }
 
 void IRGenerator::visit(ast::Program *program) {
-    if (shell.debug) std::cout << "[LLVM]: <Program>" << std::endl;
-    spaces += 1;
+    BLOCK_B("Program")
     for (auto u : program->variables) {
         u->accept(this);
     }
     for (auto u : program->routines) {
         u->accept(this);
     }
-    spaces -= 1;
-    if (shell.debug) std::cout << "[LLVM]: </Program>" << std::endl;
+    BLOCK_E("Program")
 }
 
 void IRGenerator::visit(ast::VariableDeclaration *var) {
-    if (shell.debug) std::cout << "[LLVM]: " << std::string(spaces++, ' ') << "<VariableDeclaration>" << std::endl;
-   
+    BLOCK_B("VariableDeclaration")
+
     llvm::Type* dtype = nullptr;
 
     // var dtype is given
@@ -91,7 +105,7 @@ void IRGenerator::visit(ast::VariableDeclaration *var) {
 
         // unknown dtype
         else {
-            std::cerr << RESET << RED << "[LLVM]: Error: Unsupported data type for variable " << var->name << std::endl;
+            std::cerr << RED << "[LLVM]: Error: Unsupported data type for variable " << var->name << std::endl;
             std::exit(1);
         }
     }
@@ -102,14 +116,17 @@ void IRGenerator::visit(ast::VariableDeclaration *var) {
         dtype = pop_tmp_t();
         
         if(dtype == nullptr) {
-            std::cerr << RESET << RED << "[LLVM]: Error: Cannot deduce variable dtype from initializer" << std::endl;
+            std::cerr << RED << "[LLVM]: Error: Cannot deduce variable dtype from initializer" << std::endl;
             std::exit(1);
         }
     }
+    
+    // module->getOrInsertGlobal(var->name, dtype);
+    // llvm::GlobalVariable *v = module->getNamedGlobal(var->name);
 
     // Allocate space for the (primitive) variable
     auto p = builder.CreateAlloca(dtype, nullptr, var->name);
-    
+
     // If an initial value was given, store it in the allocated space. 
     if (var->iv != nullptr) {
         var->iv->accept(this);
@@ -119,16 +136,16 @@ void IRGenerator::visit(ast::VariableDeclaration *var) {
     // Save var location for later reference
     location[var->name] = p;
 
-    if (shell.debug) std::cout << "[LLVM]: " << std::string(--spaces, ' ') << "</VariableDeclaration>" << std::endl;
+    BLOCK_E("VariableDeclaration")
 }
 
 // Sets tmp_p and optionally tmp_v and tmp_t
 void IRGenerator::visit(ast::Identifier* id) {
-    std::cout << "[LLVM]: " << std::string(spaces++, ' ') << "<Identifier>" << std::endl;
+    BLOCK_B("Identifier")
 
     auto p = location[id->name];
     if (p == nullptr) {
-        std::cerr << RESET << RED << "[LLVM]: Error: " << id->name << " is not declared." << std::endl;
+        std::cerr << RED << "[LLVM]: Error: " << id->name << " is not declared." << std::endl;
         std::exit(1);
     }
     
@@ -153,12 +170,12 @@ void IRGenerator::visit(ast::Identifier* id) {
         tmp_t = tmp_v->getType();
     }
     
-    std::cout << "[LLVM]: " << std::string(--spaces, ' ') << "</Identifier>" << std::endl;
+    BLOCK_E("Identifier")
 }
 
 // Sets tmp_v and tmp_t
 void IRGenerator::visit(ast::UnaryExpression* exp) {
-    if (shell.debug) std::cout << "[LLVM]: " << std::string(spaces++, ' ') << "<UnaryExpression>" << std::endl;
+    BLOCK_B("UnaryExpression")
     
     exp->operand->accept(this);
     llvm::Value *O = pop_tmp_v();
@@ -181,12 +198,13 @@ void IRGenerator::visit(ast::UnaryExpression* exp) {
             break;
     }
 
-    if (shell.debug) std::cout << "[LLVM]: " << std::string(--spaces, ' ') << "</UnaryExpression>" << std::endl;
+    BLOCK_E("UnaryExpression")
 }
 
 // Sets tmp_v and tmp_t
 void IRGenerator::visit(ast::BinaryExpression* exp) {
-    if (shell.debug) std::cout << "[LLVM]: " << std::string(spaces++, ' ') << "<BinaryExpression>" << std::endl;
+    BLOCK_B("BinaryExpression")
+
     exp->lhs->accept(this);
     llvm::Value *L = pop_tmp_v();
 
@@ -290,7 +308,7 @@ void IRGenerator::visit(ast::BinaryExpression* exp) {
             break;
         
         default:
-            std::cerr << RESET << RED << "[LLVM]: Error: Unknown operator" << std::endl;
+            std::cerr << RED << "[LLVM]: Error: Unknown operator" << std::endl;
             std::exit(1);
     }
 
@@ -304,7 +322,7 @@ void IRGenerator::visit(ast::BinaryExpression* exp) {
         tmp_t = llvm::Type::getInt64Ty(context);
     }
 
-    if (shell.debug) std::cout << "[LLVM]: " << std::string(--spaces, ' ') << "</BinaryExpression>" << std::endl;
+    BLOCK_E("BinaryExpression")
 }
 
 void IRGenerator::visit(ast::IntType *it) {
@@ -321,6 +339,8 @@ void IRGenerator::visit(ast::BoolType *bt) {
 
 // Sets tmp_p (pointer to the beginning of array)
 void IRGenerator::visit(ast::ArrayType *at) {
+    BLOCK_B("ArrayType")
+
     at->size->accept(this);
     auto size = pop_tmp_v();
 
@@ -328,6 +348,16 @@ void IRGenerator::visit(ast::ArrayType *at) {
     auto dtype = pop_tmp_t();
 
     tmp_p = builder.CreateAlloca(dtype, size);
+
+    BLOCK_E("ArrayType")
+}
+
+void IRGenerator::visit(ast::RecordType *rt) {
+    BLOCK_B("RecordType")
+
+    // TODO
+
+    BLOCK_E("RecordType")
 }
 
 void IRGenerator::visit(ast::IntLiteral *il) {
@@ -344,7 +374,7 @@ void IRGenerator::visit(ast::BoolLiteral *bl) {
 
 // Sets tmp_v (the function pointer)
 void IRGenerator::visit(ast::RoutineDeclaration* routine) {
-    if (shell.debug) std::cout << "[LLVM]: " << std::string(spaces++, ' ') << "<RoutineDeclaration>" << std::endl;
+    BLOCK_B("RoutineDeclaration")
 
     // Types of the parameters
     std::vector<llvm::Type*> paramTypes;
@@ -392,11 +422,12 @@ void IRGenerator::visit(ast::RoutineDeclaration* routine) {
     llvm::verifyFunction(*fun);
     tmp_v = fun;
 
-    if (shell.debug) std::cout << "[LLVM]: " << std::string(--spaces, ' ') << "</RoutineDeclaration>" << std::endl;
+    BLOCK_E("RoutineDeclaration")
 }
 
 void IRGenerator::visit(ast::Body* body) {
-    if (shell.debug) std::cout << "[LLVM]: " << std::string(spaces++, ' ') << "<Body>" << std::endl;
+    BLOCK_B("Body")
+
     auto vars = body->variables;
     auto stmts = body->statements;
 
@@ -413,32 +444,34 @@ void IRGenerator::visit(ast::Body* body) {
     for (auto& var : vars) {
         var->accept(this);
     }
-    for (auto& statement : stmts) {
-        statement->accept(this);
+    for (auto& stmt : stmts) {
+        stmt->accept(this);
     }
 
-    if (shell.debug) std::cout << "[LLVM]: " << std::string(--spaces, ' ') << "</Body>" << std::endl;
+    BLOCK_E("Body")
 }
 
 void IRGenerator::visit(ast::ReturnStatement* stmt) {
-    if (shell.debug) std::cout << "[LLVM]: " << std::string(spaces++, ' ') << "<ReturnStatement>" << std::endl;
+    BLOCK_B("ReturnStatement")
+
     llvm::Value* rval = nullptr;
     if (stmt->exp != nullptr) {
         stmt->exp->accept(this);
         rval = pop_tmp_v();
     }
     builder.CreateRet(rval);
-    if (shell.debug) std::cout << "[LLVM]: " << std::string(--spaces, ' ') << "</ReturnStatement>" << std::endl;
+
+    BLOCK_E("ReturnStatement")
 }
 
 void IRGenerator::visit(ast::PrintStatement* stmt) {
-    if (shell.debug) std::cout << "[LLVM]: " << std::string(spaces++, ' ') << "<PrintStatement>" << std::endl;
+    BLOCK_B("PrintStatement")
 
     stmt->exp->accept(this);
     llvm::Value* to_print = pop_tmp_v();
 
     if(to_print == nullptr) {
-        std::cerr << RESET << RED << "[LLVM]: Printing an unassigned value" << std::endl;
+        std::cerr << RED << "[LLVM]: Printing an unassigned value" << std::endl;
         std::exit(1);
     }
 
@@ -458,7 +491,7 @@ void IRGenerator::visit(ast::PrintStatement* stmt) {
         fmt = "%f\n";
     }
     else {
-        std::cerr << RESET << RED << "[LLVM]: Error: Cannot print " << std::flush;
+        std::cerr << RED << "[LLVM]: Error: Cannot print " << std::flush;
         to_print->print(llvm::errs());
         std::exit(1);
     }
@@ -482,15 +515,87 @@ void IRGenerator::visit(ast::PrintStatement* stmt) {
     // Create function call
     builder.CreateCall(print, args, "printfCall");
 
-    if (shell.debug) std::cout << "[LLVM]: " << std::string(--spaces, ' ') << "</PrintStatement>" << std::endl;
+    BLOCK_E("PrintStatement")
 }
 
 void IRGenerator::visit(ast::AssignmentStatement* stmt) {
+    BLOCK_B("AssignmentStatement")
+
     stmt->id->accept(this);
     auto id_loc = pop_tmp_p();
 
     stmt->exp->accept(this);
     auto exp = pop_tmp_v();
 
+    // id_loc is a pointer to the modifiable_primary to be accessed
+    // exp is a Value* containing the new data
+
+    // TODO: type checks and casts.
+
+    // auto lhs_t = builder.CreateLoad(id_loc, "id*")->getType();
+    // auto rhs_t = exp->getType();
+    
+    // if(lhs_t == llvm::Type::getInt64Ty(context) && rhs_t == llvm::Type::getDoubleTy(context)) {
+    //     exp = builder.CreateCast(llvm::CastInst::get)
+    // }
+
     builder.CreateStore(exp, id_loc);
+
+    BLOCK_E("AssignmentStatement")
+}
+
+void IRGenerator::visit(ast::IfStatement* stmt) {
+    BLOCK_B("IfStatement")
+
+    stmt->cond->accept(this);
+    llvm::Value* cond = pop_tmp_v();
+
+    if (cond->getType()->isFloatingPointTy()) {
+        std::cerr << RED << "[LLVM]: Error: If condition cannot be a real expression" << std::endl;
+        return;
+    }
+
+    // If cond is of IntegerType, compare it to 0 to create bool.
+    if(cond->getType()->getIntegerBitWidth() == 64){
+        cond = builder.CreateICmpNE(cond, llvm::ConstantInt::get(context, llvm::APInt(64, 0)), "cond");
+    }
+
+    // Get the current function
+    llvm::Function* func = builder.GetInsertBlock()->getParent();
+
+    // Create blocks for the then, else, endif.
+    llvm::BasicBlock* then_block = llvm::BasicBlock::Create(context, "then", func);
+    llvm::BasicBlock* else_block = stmt->else_body ? llvm::BasicBlock::Create(context, "else") : nullptr;
+    llvm::BasicBlock* endif = llvm::BasicBlock::Create(context, "endif");
+
+    // Create the conditional statement
+    builder.CreateCondBr(cond, then_block, else_block ? else_block : endif);
+
+    // Then block
+    {
+        builder.SetInsertPoint(then_block);
+        stmt->then_body->accept(this);
+        builder.CreateBr(endif);
+        
+        then_block = builder.GetInsertBlock();
+    }
+    
+    // Else block
+    if(else_block) {
+        func->getBasicBlockList().push_back(else_block);
+
+        builder.SetInsertPoint(else_block);
+        stmt->else_body->accept(this);
+        builder.CreateBr(endif);
+
+        else_block = builder.GetInsertBlock();
+    }
+
+    // Endif
+    {
+        func->getBasicBlockList().push_back(endif);
+        builder.SetInsertPoint(endif);
+    }
+    
+    BLOCK_E("IfStatement")
 }

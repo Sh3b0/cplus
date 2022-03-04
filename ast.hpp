@@ -6,11 +6,6 @@
 #include <map>
 #include <vector>
 
-#include <llvm/IR/Module.h>
-#include <llvm/IR/IRBuilder.h>
-#include <llvm/IR/LLVMContext.h>
-#include <llvm/IR/Verifier.h>
-
 // Forward declarations
 namespace ast {
 struct Node;
@@ -24,6 +19,7 @@ struct IntType;
 struct RealType;
 struct BoolType;
 struct ArrayType;
+struct RecordType;
 struct IntLiteral;
 struct RealLiteral;
 struct BoolLiteral;
@@ -34,6 +30,7 @@ struct Statement;
 struct ReturnStatement;
 struct PrintStatement;
 struct AssignmentStatement;
+struct IfStatement;
 } // namespace ast
 
 // Base class for code generator and anything that traverses AST.
@@ -44,6 +41,7 @@ public:
     virtual void visit(ast::RealType *it) = 0;
     virtual void visit(ast::BoolType *it) = 0;
     virtual void visit(ast::ArrayType *at) = 0;
+    virtual void visit(ast::RecordType *rt) = 0;
     virtual void visit(ast::IntLiteral *il) = 0;
     virtual void visit(ast::RealLiteral *rl) = 0;
     virtual void visit(ast::BoolLiteral *bl) = 0;
@@ -56,6 +54,7 @@ public:
     virtual void visit(ast::ReturnStatement *stmt) = 0;
     virtual void visit(ast::PrintStatement *stmt) = 0;
     virtual void visit(ast::AssignmentStatement *stmt) = 0;
+    virtual void visit(ast::IfStatement *stmt) = 0;
 };
 
 namespace ast {
@@ -132,6 +131,18 @@ struct ArrayType : Type {
     void accept(Visitor* v) override { v->visit(this); }
 };
 
+struct RecordType : Type {
+    std::map<std::string, np<VariableDeclaration>> fields;
+    
+    RecordType(std::map<std::string, np<VariableDeclaration>> fields){
+        this->fields = fields;
+    }
+
+    TypeEnum getType() { return TypeEnum::RECORD; }
+
+    void accept(Visitor* v) override { v->visit(this); }
+};
+
 // </Types>
 // <Expressions>
 struct UnaryExpression : Expression {
@@ -188,22 +199,29 @@ struct BoolLiteral : Expression {
         this->dtype = std::make_shared<BoolType>();
         this->value = value;
     }
-    
+
     void accept(Visitor* v) override { v->visit(this); }
 };
 
-// For variable, array element, or record field access.
 struct Identifier : Expression {
-    std::string name;
+    std::string name, field;
     np<Expression> idx;
     
+    // variable access
     Identifier(std::string name) {
         this->name = name;
     }
     
+    // array element access
     Identifier(std::string name, np<Expression> idx) {
         this->name = name;
         this->idx = idx;
+    }
+
+    // record field access
+    Identifier(std::string name, std::string field) {
+        this->name = name;
+        this->field = field;
     }
 
     void accept(Visitor *v) override { v->visit(this); }
@@ -302,6 +320,24 @@ struct AssignmentStatement : Statement {
     AssignmentStatement(np<Identifier> id, np<Expression> exp) {
         this->id = id;
         this->exp = exp;
+    }
+
+    void accept(Visitor* v) override { v->visit(this); }
+};
+
+struct IfStatement : Statement {
+    np<Expression> cond;
+    np<Body> then_body, else_body;
+
+    IfStatement(np<Expression> cond, np<Body> then_body) {
+        this->cond = cond;
+        this->then_body = then_body;
+    }
+
+    IfStatement(np<Expression> cond, np<Body> then_body, np<Body> else_body) {
+        this->cond = cond;
+        this->then_body = then_body;
+        this->else_body = else_body;
     }
 
     void accept(Visitor* v) override { v->visit(this); }

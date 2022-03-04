@@ -32,14 +32,16 @@
 %type <ast::np<ast::VariableDeclaration>> VARIABLE_DECLARATION PARAMETER_DECLARATION
 %type <ast::np<ast::RoutineDeclaration>> ROUTINE_DECLARATION
 %type <std::vector<ast::np<ast::VariableDeclaration>>> PARAMETERS
+%type <std::map<std::string, ast::np<ast::VariableDeclaration>>> VARIABLE_DECLARATIONS
 %type <ast::np<ast::Expression>> EXPRESSION
-%type <ast::np<ast::Type>> TYPE PRIMITIVE_TYPE ARRAY_TYPE
+%type <ast::np<ast::Type>> TYPE PRIMITIVE_TYPE ARRAY_TYPE RECORD_TYPE
 %type <ast::np<ast::Body>> BODY
+%type <ast::np<ast::Identifier>> MODIFIABLE_PRIMARY
 %type <ast::np<ast::Statement>> STATEMENT
 %type <ast::np<ast::ReturnStatement>> RETURN_STATEMENT
 %type <ast::np<ast::PrintStatement>> PRINT_STATEMENT
 %type <ast::np<ast::AssignmentStatement>> ASSIGNMENT_STATEMENT
-%type <ast::np<ast::Identifier>> MP
+%type <ast::np<ast::IfStatement>> IF_STATEMENT
 
 %left COMMA
 %right BECOMES
@@ -71,8 +73,10 @@
 {
     #include "lexer.h"
     #include "shell.hpp"
+
     #define RESET   "\033[0m"
     #define GREEN   "\033[32m"
+    #define PDEBUG(X) if (shell.debug) std::cout << GREEN << "(" << X << ")" << RESET;
 
     static cplus::parser::symbol_type yylex(cplus::lexer &lexer, cplus::shell &shell) {
         return lexer.get_next_token();
@@ -88,12 +92,16 @@
 COMMA_SEPARATOR : COMMA | %empty
 ;
 
+// Used for constructing semicolon separated items
+SEMICOLON_SEPARATOR : SEMICOLON | %empty
+;
+
 PROGRAM:
     %empty {
-        if (shell.debug) std::cout << GREEN << "[PARSER]: EOF" << RESET << std::endl;
+        PDEBUG("EOF")
+        std::cout << '\n' << std::endl;
     }
     | VARIABLE_DECLARATION PROGRAM {
-        if(shell.debug) std::cout << GREEN << "[PARSER]: VARABLE_DECLARATION" << RESET << std::endl;
         program->variables.push_back($1);
     }
     | ROUTINE_DECLARATION PROGRAM {
@@ -103,26 +111,29 @@ PROGRAM:
 
 VARIABLE_DECLARATION:
     VAR ID IS EXPRESSION SEMICOLON {
+        PDEBUG("VARIABLE_DECLARATION")
         $$ = std::make_shared<ast::VariableDeclaration> ($2, $4);
     }
 
     | VAR ID COLON TYPE SEMICOLON {
+        PDEBUG("VARIABLE_DECLARATION")
         $$ = std::make_shared<ast::VariableDeclaration> ($2, $4);
     }
 
     | VAR ID COLON TYPE IS EXPRESSION SEMICOLON {
+        PDEBUG("VARIABLE_DECLARATION")
         $$ = std::make_shared<ast::VariableDeclaration> ($2, $4, $6);
     }
 ;
 
-
-MP :
+MODIFIABLE_PRIMARY :
     ID                                { $$ = std::make_shared<ast::Identifier>($1); }
     | ID SB_L EXPRESSION SB_R         { $$ = std::make_shared<ast::Identifier>($1, $3); }
+    | ID DOT ID                       { $$ = std::make_shared<ast::Identifier>($1, $3); }
 ;
 
 EXPRESSION :
-    MP                                { $$ = $1; }
+    MODIFIABLE_PRIMARY                { $$ = $1; }
     | INT_VAL                         { $$ = std::make_shared<ast::IntLiteral>($1); }
     | REAL_VAL                        { $$ = std::make_shared<ast::RealLiteral>($1); }
     | BOOL_VAL                        { $$ = std::make_shared<ast::BoolLiteral>($1); }
@@ -150,6 +161,7 @@ EXPRESSION :
 TYPE :
     PRIMITIVE_TYPE
     | ARRAY_TYPE
+    | RECORD_TYPE
 ;
 
 PRIMITIVE_TYPE:
@@ -159,17 +171,35 @@ PRIMITIVE_TYPE:
 ;
 
 ARRAY_TYPE : ARRAY SB_L EXPRESSION SB_R TYPE {
+    PDEBUG("ARRAY_TYPE")
     $$ = std::make_shared<ast::ArrayType>($3, $5);
 }
 ;
 
+RECORD_TYPE : RECORD CB_L VARIABLE_DECLARATIONS CB_R END {
+    PDEBUG("RECORD_TYPE")
+    $$ = std::make_shared<ast::RecordType>($3);
+}
+;
+
+VARIABLE_DECLARATIONS:
+    %empty {
+        std::map<std::string, ast::np<ast::VariableDeclaration>> tmp;
+        $$ = tmp;
+    }
+    | VARIABLE_DECLARATION SEMICOLON_SEPARATOR VARIABLE_DECLARATIONS {
+        $3[$1->name] = $1;
+        $$ = $3;
+    }
+;
+
 ROUTINE_DECLARATION :
     ROUTINE ID B_L PARAMETERS B_R IS BODY END {
-        if (shell.debug) std::cout << GREEN << "[PARSER]: ROUTINE_DECLARATION: " << $2 << RESET << std::endl;
+        PDEBUG("ROUTINE_DECLARATION")
         $$ = std::make_shared<ast::RoutineDeclaration>($2, $4, $7);
     }
     | ROUTINE ID B_L PARAMETERS B_R COLON TYPE IS BODY END {
-        if (shell.debug) std::cout << GREEN << "[PARSER]: ROUTINE_DECLARATION: " << $2 << RESET << std::endl;
+        PDEBUG("ROUTINE_DECLARATION")
         $$ = std::make_shared<ast::RoutineDeclaration>($2, $4, $9, $7);
     }
 ;
@@ -212,25 +242,37 @@ STATEMENT :
     RETURN_STATEMENT       { $$ = $1; }
     | PRINT_STATEMENT      { $$ = $1; }
     | ASSIGNMENT_STATEMENT { $$ = $1; }
+    | IF_STATEMENT         { $$ = $1; }
 ;
 
 RETURN_STATEMENT :
     RETURN EXPRESSION SEMICOLON {
-        if (shell.debug) std::cout << GREEN << "[PARSER]: RETURN_STATEMENT" << RESET << std::endl;
+        PDEBUG("RETURN_STATEMENT")
         $$ = std::make_shared<ast::ReturnStatement>($2);
     }
 ;
 
 PRINT_STATEMENT :
     PRINT EXPRESSION SEMICOLON {
-        if (shell.debug) std::cout << GREEN << "[PARSER]: PRINT_STATEMENT" << RESET << std::endl;
+        PDEBUG("PRINT_STATEMENT")
         $$ = std::make_shared<ast::PrintStatement>($2);
     }
 ;
 
 ASSIGNMENT_STATEMENT :
-    MP BECOMES EXPRESSION SEMICOLON {
+    MODIFIABLE_PRIMARY BECOMES EXPRESSION SEMICOLON {
         $$ = std::make_shared<ast::AssignmentStatement>($1, $3);
+    }
+;
+
+IF_STATEMENT :
+    IF EXPRESSION THEN BODY END {
+        PDEBUG("IF_STATEMENT")
+        $$ = std::make_shared<ast::IfStatement>($2, $4);
+    }
+    | IF EXPRESSION THEN BODY ELSE BODY END {
+        PDEBUG("IF_ELSE_STATEMENT")
+        $$ = std::make_shared<ast::IfStatement>($2, $4, $6);
     }
 ;
 
