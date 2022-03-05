@@ -74,6 +74,7 @@ struct Node {
 // A special node containing program variables, type aliases, and routines.
 struct Program : Node {
     std::vector<np<VariableDeclaration>> variables;
+    std::map<std::string, np<Type>> types;
     std::vector<np<RoutineDeclaration>> routines;
     
     void accept(Visitor *v) override { v->visit(this); }

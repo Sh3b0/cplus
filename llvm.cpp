@@ -9,19 +9,23 @@
 #define GWARNING(X) std::cerr << YELLOW << "[LLVM]: [WARNING]: " << X << RESET << std::endl;
 #define GERROR(X)   std::cerr << RED << "[LLVM]: [ERROR]: " << X << RESET << std::endl; std::exit(1);
 
-#define BLOCK_B(X) \
-    if (shell.debug){ \
-        std::cout << CYAN; \
-        for(int i=0; i<spaces; i++) i % 4 ? std::cout << " " : std::cout << "|"; \
-        std::cout << "<" << X << ">" << RESET << std::endl; \
-        spaces += 4; \
+#define BLOCK_B(X)                                           \
+    if (shell.debug){                                        \
+        std::cout << CYAN;                                   \
+        for(int i=0; i<spaces; i++) {                        \
+            i % 4 ? std::cout << " " : std::cout << "|";     \
+        }                                                    \
+        std::cout << "<" << X << ">" << RESET << std::endl;  \
+        spaces += 4;                                         \
     }
 
-#define BLOCK_E(X) \
-    if (shell.debug){ \
-        spaces -= 4; \
-        std::cout << CYAN; \
-        for(int i=0; i<spaces; i++) i % 4 ? std::cout << " " : std::cout << "|"; \
+#define BLOCK_E(X)                                           \
+    if (shell.debug){                                        \
+        spaces -= 4;                                         \
+        std::cout << CYAN;                                   \
+        for(int i=0; i<spaces; i++) {                        \
+            i % 4 ? std::cout << " " : std::cout << "|";     \
+        }                                                    \
         std::cout << "</" << X << ">" << RESET << std::endl; \
     }
 
@@ -31,6 +35,10 @@ extern cplus::shell shell;
 IRGenerator::IRGenerator() {
     module = std::make_unique<llvm::Module>(llvm::StringRef("ir.ll"), context);
     builder = std::make_unique<llvm::IRBuilder<>>(context);
+
+    int_t = llvm::Type::getInt64Ty(context);
+    real_t = llvm::Type::getDoubleTy(context);
+    bool_t = llvm::Type::getInt1Ty(context);
 }
 
 // Emits IR code as "ir.ll"
@@ -51,19 +59,19 @@ void IRGenerator::generate() {
     module->print(outfile, nullptr);
 }
 
-llvm::Value *IRGenerator::pop_tmp_v() {
+llvm::Value *IRGenerator::pop_v() {
     auto v = tmp_v;
     tmp_v = nullptr;
     return v;
 }
 
-llvm::Value *IRGenerator::pop_tmp_p() {
+llvm::Value *IRGenerator::pop_p() {
     auto p = tmp_p;
     tmp_p = nullptr;
     return p;
 }
 
-llvm::Type *IRGenerator::pop_tmp_t() {
+llvm::Type *IRGenerator::pop_t() {
     llvm::Type *t = tmp_t;
     tmp_t = nullptr;
     return t;
@@ -71,30 +79,37 @@ llvm::Type *IRGenerator::pop_tmp_t() {
 
 void IRGenerator::visit(ast::Program *program) {
     BLOCK_B("Program")
-    
+
+    std::reverse(program->variables.begin(), program->variables.end());
+    std::reverse(program->routines.begin(), program->routines.end());
+
     for (auto u : program->variables) {
         u->accept(this);
     }
+    
+    global_vars_pass = false;
+
     for (auto u : program->routines) {
         u->accept(this);
+        is_first_routine = false;
     }
 
     BLOCK_E("Program")
 }
 
-// Stores a pointer to the created var in location map.
+// Defines a global, or stores a pointer to the created local var in location map.
 void IRGenerator::visit(ast::VariableDeclaration *var) {
     BLOCK_B("VariableDeclaration")
 
     llvm::Type *dtype = nullptr;
 
     // var dtype is given
-    if (var->dtype != nullptr) {
+    if (var->dtype) {
 
         // dtype is an array
         if (var->dtype->getType() == ast::TypeEnum::ARRAY) {
-            var->dtype->accept(this);           // array will be created by this visit,
-            location[var->name] = pop_tmp_p();  // save a pointer to the array location for later access.
+            var->dtype->accept(this);       // array will be created by this visit,
+            location[var->name] = pop_p();  // save a pointer to the array location for later access.
             BLOCK_E("VariableDeclaration")
             return;
         }
@@ -102,7 +117,7 @@ void IRGenerator::visit(ast::VariableDeclaration *var) {
         // dtype is a record
         else if (var->dtype->getType() == ast::TypeEnum::RECORD) {
             // downcasting np<Type> --> np<RecordType>
-            auto t = std::dynamic_pointer_cast<ast::RecordType>(var->dtype); 
+            auto t = std::dynamic_pointer_cast<ast::RecordType>(var->dtype);
             t->name = var->name;
             t->accept(this);  // record fields will be created by this visit with "{var->name}." prefix.
             BLOCK_E("VariableDeclaration")
@@ -113,17 +128,12 @@ void IRGenerator::visit(ast::VariableDeclaration *var) {
         else if (var->dtype->getType() == ast::TypeEnum::INT  ||
             var->dtype->getType() == ast::TypeEnum::REAL ||
             var->dtype->getType() == ast::TypeEnum::BOOL) {
-            if(var->iv != nullptr) { // iv is given, deduce dtype 
-                var->iv->accept(this);
-                dtype = pop_tmp_t();
-                
-                if(dtype == nullptr) {
-                    GERROR("Cannot deduce variable dtype from initializer")
-                }
+            if(var->iv) { // iv is given, deduce dtype 
+                goto deduce;
             }
             else {
                 var->dtype->accept(this);
-                dtype = pop_tmp_t();
+                dtype = pop_t();
             }
         }
 
@@ -135,29 +145,79 @@ void IRGenerator::visit(ast::VariableDeclaration *var) {
 
     // dtype is not given, deduce dtype from iv
     else {
+        deduce:
         var->iv->accept(this);
-        dtype = pop_tmp_t();
+        dtype = pop_t();
         
-        if(dtype == nullptr) {
+        if(!dtype) {
             GERROR("Cannot deduce variable dtype from initializer")
-            
         }
     }
     
-    // module->getOrInsertGlobal(var->name, dtype);
-    // llvm::GlobalVariable *v = module->getNamedGlobal(var->name);
+    // Variable being declared is global
+    if(global_vars_pass) {
 
-    // Allocate space for the (primitive) variable
-    auto p = builder->CreateAlloca(dtype, nullptr, var->name);
+        // Create the global
+        module->getOrInsertGlobal(var->name, dtype);
+        auto g = module->getNamedGlobal(var->name);
+        g->setLinkage(llvm::GlobalValue::ExternalLinkage);
 
-    // If an initial value was given, store it in the allocated space. 
-    if (var->iv != nullptr) {
-        var->iv->accept(this);
-        builder->CreateStore(pop_tmp_v(), p);
+        // global is not initialized, initialize it with default value
+        if(!(var->iv)) {
+            if(dtype == int_t) {
+                g->setInitializer(llvm::ConstantInt::get(context, llvm::APInt(64, 0, true)));
+            }
+            else if(dtype == bool_t) {
+                g->setInitializer(llvm::ConstantInt::get(context, llvm::APInt(1, 0, false)));
+            }
+            else if(dtype == real_t) {
+                g->setInitializer(llvm::ConstantFP::get(context, llvm::APFloat(0.0)));
+            }
+            else {
+                GERROR("Global arrays/records are not supported")
+            }
+        }
+
+        // global is initialized, set initializer for it.
+        else {
+            var->iv->accept(this);
+            if(dtype == int_t || dtype == bool_t) {
+                if (auto init = llvm::dyn_cast<llvm::ConstantInt>(pop_v())) {
+                    g->setInitializer(init);
+                }
+                else {
+                    goto init_error;
+                }
+            }
+            else if(dtype == real_t) {
+                if (auto init = llvm::dyn_cast<llvm::ConstantFP>(pop_v())) {
+                    g->setInitializer(init);
+                }
+                else {
+                    goto init_error;
+                }
+            }
+            else {
+                init_error:
+                GERROR("Global variable cannot be initialized with non-constant value")
+            }
+        }
     }
-    
-    // Save var location for later reference
-    location[var->name] = p;
+
+    // Variable being declared is local
+    else {
+        // Allocate space for the (primitive) variable
+        auto p = builder->CreateAlloca(dtype, nullptr, var->name);
+
+        // If an initial value was given, store it in the allocated space. 
+        if (var->iv) {
+            var->iv->accept(this);
+            builder->CreateStore(pop_v(), p);
+        }
+        
+        // Save var location for later reference
+        location[var->name] = p;
+    }
 
     BLOCK_E("VariableDeclaration")
 }
@@ -166,17 +226,19 @@ void IRGenerator::visit(ast::VariableDeclaration *var) {
 void IRGenerator::visit(ast::Identifier* id) {
     BLOCK_B("Identifier")
 
-    auto p = location[id->name];
-    if (p == nullptr) {
+    auto global = module->getNamedGlobal(id->name);
+    auto p = global ? global : location[id->name];
+
+    if (!p) {
         GERROR(id->name << " is not declared.")
     }
     
     // accessing an array element
-    if(id->idx != nullptr) {
+    if(id->idx) {
         id->idx->accept(this);
 
         // GetElementPointer (GEP) instruction will get the array element location. 
-        tmp_p = builder->CreateGEP(p, pop_tmp_v());
+        tmp_p = builder->CreateGEP(p, pop_v());
     }
 
     // accessing a primitive or a record field
@@ -187,7 +249,7 @@ void IRGenerator::visit(ast::Identifier* id) {
     // If a value is stored there, load it, otherwise leave tmp_v and tmp_t as nullptrs.
     // Other visits such as PrintStatement should handle unassigned values.
     auto val = builder->CreateLoad(tmp_p, id->name);
-    if(val != nullptr) {
+    if(val) {
         tmp_v = val;
         tmp_t = tmp_v->getType();
     }
@@ -200,23 +262,23 @@ void IRGenerator::visit(ast::UnaryExpression* exp) {
     BLOCK_B("UnaryExpression")
     
     exp->operand->accept(this);
-    llvm::Value *O = pop_tmp_v();
+    llvm::Value *O = pop_v();
 
     switch (exp->op) {
         case ast::OperatorEnum::MINUS:
             if(O->getType()->isFloatingPointTy()) {
                 tmp_v = builder->CreateFNeg(O, "negtmp");
-                tmp_t = llvm::Type::getDoubleTy(context);
+                tmp_t = real_t;
             }
             else {
                 tmp_v = builder->CreateNeg(O, "negtmp");
-                tmp_t = llvm::Type::getInt64Ty(context);
+                tmp_t = int_t;
             }
             break;
 
         case ast::OperatorEnum::NOT:
             tmp_v = builder->CreateNot(O, "nottmp");
-            tmp_t = llvm::Type::getInt1Ty(context);
+            tmp_t = bool_t;
             break;
     }
 
@@ -228,10 +290,10 @@ void IRGenerator::visit(ast::BinaryExpression* exp) {
     BLOCK_B("BinaryExpression")
 
     exp->lhs->accept(this);
-    llvm::Value *L = pop_tmp_v();
+    llvm::Value *L = pop_v();
 
     exp->rhs->accept(this);
-    llvm::Value *R = pop_tmp_v();
+    llvm::Value *R = pop_v();
 
     // if(shell.debug) {
     //     L->print(llvm::outs());
@@ -243,11 +305,11 @@ void IRGenerator::visit(ast::BinaryExpression* exp) {
     bool float_exp = false, bool_exp = false;
     if(L->getType()->isFloatingPointTy() && R->getType()->isIntegerTy()){
         float_exp = true;
-        R = builder->CreateUIToFP(R, llvm::Type::getDoubleTy(context));
+        R = builder->CreateUIToFP(R, real_t);
     }
     else if(L->getType()->isIntegerTy() && R->getType()->isFloatingPointTy()){
         float_exp = true;
-        L = builder->CreateUIToFP(L, llvm::Type::getDoubleTy(context));
+        L = builder->CreateUIToFP(L, real_t);
     }
     else if (L->getType()->isFloatingPointTy() && R->getType()->isFloatingPointTy()){
         float_exp = true;
@@ -334,39 +396,43 @@ void IRGenerator::visit(ast::BinaryExpression* exp) {
     }
 
     if(bool_exp) {
-        tmp_t = llvm::Type::getInt1Ty(context);
+        tmp_t = bool_t;
     }
     else if(float_exp){
-        tmp_t = llvm::Type::getDoubleTy(context);
+        tmp_t = real_t;
     }
     else {
-        tmp_t = llvm::Type::getInt64Ty(context);
+        tmp_t = int_t;
     }
 
     BLOCK_E("BinaryExpression")
 }
 
 void IRGenerator::visit(ast::IntType *it) {
-    tmp_t = llvm::Type::getInt64Ty(context);
+    tmp_t = int_t;
 }
 
 void IRGenerator::visit(ast::RealType *rt) {
-    tmp_t = llvm::Type::getDoubleTy(context);
+    tmp_t = real_t;
 }
 
 void IRGenerator::visit(ast::BoolType *bt) {
-    tmp_t = llvm::Type::getInt1Ty(context);
+    tmp_t = bool_t;
 }
 
 // Sets tmp_p (pointer to the beginning of array)
 void IRGenerator::visit(ast::ArrayType *at) {
     BLOCK_B("ArrayType")
 
+    if(global_vars_pass) {
+        GERROR("Global arrays are not supported")
+    }
+
     at->size->accept(this);
-    auto size = pop_tmp_v();
+    auto size = pop_v();
 
     at->dtype->accept(this);
-    auto dtype = pop_tmp_t();
+    auto dtype = pop_t();
 
     tmp_p = builder->CreateAlloca(dtype, size);
 
@@ -375,6 +441,10 @@ void IRGenerator::visit(ast::ArrayType *at) {
 
 void IRGenerator::visit(ast::RecordType *rt) {
     BLOCK_B("RecordType")
+
+    if(global_vars_pass) {
+        GERROR("Global records are not supported")
+    }
 
     for(auto field : rt->fields) {
         field->name = rt->name + "." + field->name;
@@ -386,17 +456,17 @@ void IRGenerator::visit(ast::RecordType *rt) {
 
 void IRGenerator::visit(ast::IntLiteral *il) {
     tmp_v = llvm::ConstantInt::get(context, llvm::APInt(64, il->value, true));
-    tmp_t = llvm::Type::getInt64Ty(context);
+    tmp_t = int_t;
 }
 
 void IRGenerator::visit(ast::RealLiteral *rl) {
     tmp_v = llvm::ConstantFP::get(context, llvm::APFloat(rl->value));
-    tmp_t = llvm::Type::getDoubleTy(context);
+    tmp_t = real_t;
 }
 
 void IRGenerator::visit(ast::BoolLiteral *bl) {
-    tmp_v = llvm::ConstantInt::get(context, llvm::APInt(1, bl->value, true));
-    tmp_t = llvm::Type::getInt1Ty(context);
+    tmp_v = llvm::ConstantInt::get(context, llvm::APInt(1, bl->value, false));
+    tmp_t = bool_t;
 }
 
 // Sets tmp_v (the function pointer)
@@ -407,14 +477,14 @@ void IRGenerator::visit(ast::RoutineDeclaration* routine) {
     std::vector<llvm::Type*> paramTypes;
     for (auto& param : routine->params) {
         param->dtype->accept(this);
-        paramTypes.push_back(pop_tmp_t());
+        paramTypes.push_back(pop_t());
     }
 
     // The routine's return type
     llvm::Type *rtype = llvm::Type::getVoidTy(context);
-    if (routine->rtype != nullptr) {
+    if (routine->rtype) {
         routine->rtype->accept(this);
-        rtype = pop_tmp_t();
+        rtype = pop_t();
     }
 
     // The function's type: (return type, parameter types, varargs?)
@@ -424,7 +494,8 @@ void IRGenerator::visit(ast::RoutineDeclaration* routine) {
     llvm::Function* fun = llvm::Function::Create(
         ft,
         llvm::Function::ExternalLinkage,
-        routine->name, module.get()
+        routine->name,
+        module.get()
     );
 
     // Give the parameters their names
@@ -440,13 +511,13 @@ void IRGenerator::visit(ast::RoutineDeclaration* routine) {
     builder->SetInsertPoint(bb);
 
     // Record the function arguments in the location map
-    location.clear();
+    // location.clear();
     for (auto& arg : fun->args()) {
         location[arg.getName()] = &arg;
     }
 
-    // Create globals needed for Print
-    if(routine->name == "main") {
+    // Create globals needed for PrintStatement
+    if(is_first_routine) {
         fmt_lld = builder->CreateGlobalStringPtr(llvm::StringRef("%lld\n"), "fmt_lld");
         fmt_f = builder->CreateGlobalStringPtr(llvm::StringRef("%f\n"), "fmt_f");
         fmt_s = builder->CreateGlobalStringPtr(llvm::StringRef("%s\n"), "fmt_s");
@@ -489,9 +560,9 @@ void IRGenerator::visit(ast::ReturnStatement* stmt) {
     BLOCK_B("ReturnStatement")
 
     llvm::Value *rval = nullptr;
-    if (stmt->exp != nullptr) {
+    if (stmt->exp) {
         stmt->exp->accept(this);
-        rval = pop_tmp_v();
+        rval = pop_v();
     }
     builder->CreateRet(rval);
 
@@ -516,14 +587,14 @@ void IRGenerator::visit(ast::PrintStatement* stmt) {
         stmt->exp->accept(this);
 
         // Get exp value
-        to_print = pop_tmp_v();
-        if(to_print == nullptr) {
+        to_print = pop_v();
+        if(!to_print) {
             GERROR("Trying to print an unassigned value")
         }
 
         // Get exp dtype
-        dtype = pop_tmp_t();
-        if(dtype == nullptr) { // Happens when printing a constant value
+        dtype = pop_t();
+        if(!dtype) { // Happens when printing a constant value
             dtype = to_print->getType();
         }
         
@@ -568,19 +639,15 @@ void IRGenerator::visit(ast::AssignmentStatement* stmt) {
 
     // id_loc is a pointer to the modifiable_primary to be accessed
     stmt->id->accept(this);
-    auto id_loc = pop_tmp_p();
+    auto id_loc = pop_p();
 
     // exp is a Value* containing the new data
     stmt->exp->accept(this);
-    auto exp = pop_tmp_v();
+    auto exp = pop_v();
 
     auto lhs_t = builder->CreateLoad(id_loc)->getType();
     auto rhs_t = exp->getType();
 
-    auto int_t = llvm::Type::getInt64Ty(context);
-    auto real_t = llvm::Type::getDoubleTy(context);
-    auto bool_t = llvm::Type::getInt1Ty(context);
-    
     if(lhs_t == int_t && rhs_t == real_t) { // real -> int
         exp = builder->CreateFPToSI(exp, lhs_t, "intcast");
     }
@@ -617,7 +684,7 @@ void IRGenerator::visit(ast::IfStatement* stmt) {
     BLOCK_B("IfStatement")
 
     stmt->cond->accept(this);
-    llvm::Value *cond = pop_tmp_v();
+    llvm::Value *cond = pop_v();
 
     if(!cond->getType()->isIntegerTy() ||
         !(cond->getType()->getIntegerBitWidth() == 64 ||

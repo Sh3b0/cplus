@@ -8,7 +8,6 @@
 #define RED     "\033[31m"
 #define GREEN   "\033[32m"
 #define YELLOW  "\033[33m"
-#define MAGENTA "\033[35m"
 #define CYAN    "\033[36m"
 #define RESET   "\033[0m"
 
@@ -29,18 +28,21 @@ int main(int argc, char **argv) {
         return 1;
     }
 
-    std::cout << MAGENTA << "[AST]:" << std::endl;
-    if(shell.debug) shell.print_ast();
-    std::cout << RESET;
+    std::cout << CYAN << "[AST]:" << RESET << std::endl;
 
-    std::cout << CYAN << "[LLVM]:" << RESET << std::endl;
     IRGenerator gen;
     program->accept(&gen);
     gen.generate();
 
     std::string cmd = "clang -x ir ir.ll -o " + shell.outfile;
-    system(cmd.c_str());
-    std::cout << "\033[0m" << "\nCompilation successful. Run ./" << shell.outfile << " to execute\n";
+    
+    if(!system(cmd.c_str())) {
+        std::cout << "\033[0m" << "\nCompilation successful. Run ./" << shell.outfile << " to execute\n";
+    }
+    else {
+        std::cerr << RESET << RED << "Error generating IR\n";
+        return 1;
+    }
     
     return 0;
 }

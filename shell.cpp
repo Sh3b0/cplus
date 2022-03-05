@@ -55,18 +55,4 @@ int shell::parse_args(int argc, char **argv) {
     return 0;
 }
 
-int shell::print_ast() {
-    std::cout << "Program routines: ";
-    for(auto u:program->routines)
-        std::cout << u->name << " ";
-
-    std::cout << "\nGlobal variables: ";
-    for(auto u:program->variables)
-        std::cout << u->name << " ";
-    
-    std::cout << '\n' << std::endl;
-
-    return 0;
-}
-
 } // namespace cplus

@@ -30,8 +30,8 @@
 %type <bool> BOOL_VAL
 
 %type <ast::np<ast::VariableDeclaration>> VARIABLE_DECLARATION PARAMETER_DECLARATION
+%type <std::vector<ast::np<ast::VariableDeclaration>>> VARIABLE_DECLARATIONS PARAMETERS
 %type <ast::np<ast::RoutineDeclaration>> ROUTINE_DECLARATION
-%type <std::vector<ast::np<ast::VariableDeclaration>>> PARAMETERS VARIABLE_DECLARATIONS
 %type <ast::np<ast::Expression>> EXPRESSION
 %type <ast::np<ast::Type>> TYPE PRIMITIVE_TYPE ARRAY_TYPE RECORD_TYPE
 %type <ast::np<ast::Body>> BODY
@@ -74,7 +74,7 @@
 
     #define RESET   "\033[0m"
     #define GREEN   "\033[32m"
-    #define PDEBUG(X) if (shell.debug) std::cout << GREEN << "(" << X << ")" << RESET;
+    #define PDEBUG(X) if (shell.debug) std::cout << GREEN << "(" << X << ") " << RESET;
 
     static cplus::parser::symbol_type yylex(cplus::lexer &lexer, cplus::shell &shell) {
         return lexer.get_next_token();
@@ -105,6 +105,7 @@ PROGRAM:
     | ROUTINE_DECLARATION PROGRAM {
         program->routines.push_back($1);
     }
+    | GLOBAL_TYPE_DECLARATION PROGRAM
 ;
 
 VARIABLE_DECLARATION:
@@ -121,6 +122,13 @@ VARIABLE_DECLARATION:
     | VAR ID COLON TYPE IS EXPRESSION SEMICOLON {
         PDEBUG("VARIABLE_DECLARATION")
         $$ = std::make_shared<ast::VariableDeclaration> ($2, $4, $6);
+    }
+;
+
+GLOBAL_TYPE_DECLARATION :
+    TYPE_KW ID IS TYPE SEMICOLON {
+        PDEBUG("GLOBAL_TYPE_DECLARATION")
+        program->types[$2] = $4;
     }
 ;
 
@@ -159,6 +167,10 @@ TYPE :
     PRIMITIVE_TYPE
     | ARRAY_TYPE
     | RECORD_TYPE
+    | ID {
+        PDEBUG("ALIASED_TYPE_ACCESS")
+        $$ = program->types[$1];
+    }
 ;
 
 PRIMITIVE_TYPE:
@@ -214,6 +226,7 @@ PARAMETERS :
 
 PARAMETER_DECLARATION :
     ID COLON TYPE {
+        PDEBUG("PARAMETER_DECLARATION")
         $$ = std::make_shared<ast::VariableDeclaration>($1, $3);
     }
 ;
@@ -228,7 +241,6 @@ BODY :
         $2->variables.push_back($1);
         $$ = $2;
     }
-    /* | TYPE_DECLARATION BODY */
     | STATEMENT BODY {
         $2->statements.push_back($1);
         $$ = $2;
@@ -262,6 +274,7 @@ PRINT_STATEMENT :
 
 ASSIGNMENT_STATEMENT :
     MODIFIABLE_PRIMARY BECOMES EXPRESSION SEMICOLON {
+        PDEBUG("ASSIGNMENT_STATEMENT")
         $$ = std::make_shared<ast::AssignmentStatement>($1, $3);
     }
 ;

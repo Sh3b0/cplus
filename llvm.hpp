@@ -49,33 +49,20 @@ private:
     llvm::Value *tmp_p = nullptr;
     llvm::Type *tmp_t = nullptr;
 
-    int spaces = 0;
-
-    llvm::Value *pop_tmp_v();
-    llvm::Value *pop_tmp_p();
-    llvm::Type *pop_tmp_t();
+    llvm::IntegerType *int_t, *bool_t;
+    llvm::Type *real_t;
 
     llvm::Constant *fmt_lld = nullptr;
     llvm::Constant *fmt_f = nullptr;
     llvm::Constant *fmt_s = nullptr;
-    
-    std::map<ast::OperatorEnum, std::string> op_to_str = {
-        { ast::OperatorEnum::PLUS, "+" },
-        { ast::OperatorEnum::MINUS, "-" },
-        { ast::OperatorEnum::MUL, "*" },
-        { ast::OperatorEnum::DIV, "/" },
-        { ast::OperatorEnum::MOD, "%" },
-        { ast::OperatorEnum::AND, "%" },
-        { ast::OperatorEnum::OR, "|" },
-        { ast::OperatorEnum::XOR, "^" },
-        { ast::OperatorEnum::NOT, "~" },
-        { ast::OperatorEnum::LEQ, "<=" },
-        { ast::OperatorEnum::GEQ, ">=" },
-        { ast::OperatorEnum::LT, "<" },
-        { ast::OperatorEnum::GT, ">" },
-        { ast::OperatorEnum::EQ, "=" },
-        { ast::OperatorEnum::NEQ, "/=" }
-    };
+
+    int spaces = 0;
+    bool global_vars_pass = true;
+    bool is_first_routine = true;
+
+    llvm::Value *pop_v();
+    llvm::Value *pop_p();
+    llvm::Type *pop_t();
 };
 
 #endif // LLVM_H

@@ -46,17 +46,17 @@ alphanum   [a-zA-Z_0-9\.]
 }
 
 "integer" {
-    LDEBUG("INT")
+    LDEBUG("INT_KW")
     return cplus::parser::make_INT_KW();
 }
 
 "real" {
-    LDEBUG("REAL")
+    LDEBUG("REAL_KW")
     return cplus::parser::make_REAL_KW();
 }
 
 "boolean" {
-    LDEBUG("BOOL")
+    LDEBUG("BOOL_KW")
     return cplus::parser::make_BOOL_KW();
 }
 

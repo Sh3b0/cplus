@@ -1,4 +1,10 @@
-routine main() : integer is
+type int is integer;
+
+routine main() : int is
+    var tmp : int;
+    tmp := 5;
+    print tmp;       # 5
+
     print "Hello C+";
 
     var x is 5 + 5 * 3;
@@ -30,25 +36,7 @@ routine main() : integer is
 
     if x = t - 1 then
         print 1;
-    else
-        print 2;
     end
-
-    var overkill : record {
-        var f1 : integer;
-        var f2 : record {
-            var f3 : integer;
-            var f4 : array[3] real; 
-        } end
-        ;
-    } end
-    ;
-
-    overkill.f1 := 1;
-    overkill.f2.f3 := 2;
-    overkill.f2.f4[1] := 3.5;
-
-    print overkill.f1 + overkill.f2.f3 + overkill.f2.f4[1] + 1;
 
     return 0;
 end
