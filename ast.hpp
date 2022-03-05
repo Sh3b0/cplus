@@ -32,6 +32,7 @@ struct PrintStatement;
 struct AssignmentStatement;
 struct IfStatement;
 struct WhileLoop;
+struct ForLoop;
 } // namespace ast
 
 // Base class for code generator and anything that traverses AST.
@@ -57,6 +58,7 @@ public:
     virtual void visit(ast::AssignmentStatement *stmt) = 0;
     virtual void visit(ast::IfStatement *stmt) = 0;
     virtual void visit(ast::WhileLoop *stmt) = 0;
+    virtual void visit(ast::ForLoop *stmt) = 0;
 };
 
 namespace ast {
@@ -303,14 +305,17 @@ struct ReturnStatement : Statement {
 
 struct PrintStatement : Statement {
     np<Expression> exp;
-    std::string str;
+    np<std::string> str;
+    bool endl;
 
-    PrintStatement(np<Expression> exp) {
+    PrintStatement(np<Expression> exp, bool endl=false) {
         this->exp = exp;
+        this->endl = endl;
     }
 
-    PrintStatement(std::string str) {
+    PrintStatement(np<std::string> str, bool endl=false) {
         this->str = str;
+        this->endl = endl;
     }
 
     void accept(Visitor* v) override { v->visit(this); }
@@ -353,6 +358,22 @@ struct WhileLoop : Statement {
     WhileLoop(np<Expression> cond, np<Body> body) {
         this->cond = cond;
         this->body = body;
+    }
+
+    void accept(Visitor* v) override { v->visit(this); }
+};
+
+struct ForLoop : Statement {
+    np<VariableDeclaration> loop_var;
+    np<Expression> cond;
+    np<Body> body;
+    np<AssignmentStatement> action;
+
+    ForLoop(np<VariableDeclaration> loop_var, np<Expression> cond, np<Body> body, np<AssignmentStatement> action) {
+        this->loop_var = loop_var;
+        this->cond = cond;
+        this->body = body;
+        this->action = action;
     }
 
     void accept(Visitor* v) override { v->visit(this); }

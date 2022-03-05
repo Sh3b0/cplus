@@ -90,6 +90,11 @@ alphanum   [a-zA-Z_0-9\.]
     return cplus::parser::make_PRINT();
 }
 
+"println" {
+    LDEBUG("PRINTLN")
+    return cplus::parser::make_PRINTLN();
+}
+
 "if" {
     LDEBUG("IF")
     return cplus::parser::make_IF();

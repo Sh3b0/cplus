@@ -518,9 +518,12 @@ void IRGenerator::visit(ast::RoutineDeclaration* routine) {
 
     // Create globals needed for PrintStatement
     if(is_first_routine) {
-        fmt_lld = builder->CreateGlobalStringPtr(llvm::StringRef("%lld\n"), "fmt_lld");
-        fmt_f = builder->CreateGlobalStringPtr(llvm::StringRef("%f\n"), "fmt_f");
-        fmt_s = builder->CreateGlobalStringPtr(llvm::StringRef("%s\n"), "fmt_s");
+        fmt_lld = builder->CreateGlobalStringPtr(llvm::StringRef("%lld"), "fmt_lld");
+        fmt_f = builder->CreateGlobalStringPtr(llvm::StringRef("%f"), "fmt_f");
+        fmt_s = builder->CreateGlobalStringPtr(llvm::StringRef("%s"), "fmt_s");
+        fmt_lld_ln = builder->CreateGlobalStringPtr(llvm::StringRef("%lld\n"), "fmt_lld");
+        fmt_f_ln = builder->CreateGlobalStringPtr(llvm::StringRef("%f\n"), "fmt_f");
+        fmt_s_ln = builder->CreateGlobalStringPtr(llvm::StringRef("%s\n"), "fmt_s");
     }
 
     routine->body->accept(this);
@@ -577,9 +580,9 @@ void IRGenerator::visit(ast::PrintStatement* stmt) {
     llvm::Constant *fmt;
 
     // Printing a constant string
-    if(stmt->str != "") {
-        fmt = fmt_s;
-        to_print = builder->CreateGlobalStringPtr(llvm::StringRef(stmt->str), "str");
+    if(stmt->str) {
+        fmt = stmt->endl ? fmt_s_ln : fmt_s;
+        to_print = builder->CreateGlobalStringPtr(llvm::StringRef(*stmt->str), "str");
     }
 
     // Printing an expression
@@ -600,10 +603,10 @@ void IRGenerator::visit(ast::PrintStatement* stmt) {
         
         // Setting format string for printf depending on exp type
         if (dtype->isIntegerTy()) {
-            fmt = fmt_lld;
+            fmt = stmt->endl ? fmt_lld_ln : fmt_lld;
         }
         else if (dtype->isFloatingPointTy()) {
-            fmt = fmt_f;
+            fmt = stmt->endl ? fmt_f_ln : fmt_f;
         }
         else {
             std::cerr << RED << "[LLVM]: [ERROR]: Cannot print " << RESET << std::flush;
@@ -778,4 +781,44 @@ void IRGenerator::visit(ast::WhileLoop* stmt) {
     }
 
     BLOCK_E("WhileLoop")
+}
+
+// For loop is just a fancy while loop :)
+void IRGenerator::visit(ast::ForLoop* stmt) {
+    BLOCK_B("ForLoop")
+    
+    llvm::Function* parent = builder->GetInsertBlock()->getParent();
+
+    llvm::BasicBlock* cond_block = llvm::BasicBlock::Create(context, "cond", parent);
+    llvm::BasicBlock* loop_block = llvm::BasicBlock::Create(context, "loop");
+    llvm::BasicBlock* end_block = llvm::BasicBlock::Create(context, "loopend");
+
+    // Declare loop var
+    stmt->loop_var->accept(this);
+
+    // Condition
+    {
+        builder->CreateBr(cond_block);
+        builder->SetInsertPoint(cond_block);
+        stmt->cond->accept(this);
+        auto cond = exp_to_bool(pop_v());
+        builder->CreateCondBr(cond, loop_block, end_block);
+    }
+
+    // Loop
+    {
+        parent->getBasicBlockList().push_back(loop_block);
+        builder->SetInsertPoint(loop_block);
+        stmt->body->accept(this);
+        stmt->action->accept(this); // do the loop action.
+        builder->CreateBr(cond_block);
+    }
+    
+    // End
+    {
+        parent->getBasicBlockList().push_back(end_block);
+        builder->SetInsertPoint(end_block);
+    }
+
+    BLOCK_E("ForLoop")
 }

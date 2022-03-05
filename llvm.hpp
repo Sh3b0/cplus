@@ -39,6 +39,7 @@ public:
     void visit(ast::AssignmentStatement *stmt) override;
     void visit(ast::IfStatement *stmt) override;
     void visit(ast::WhileLoop *stmt) override;
+    void visit(ast::ForLoop *stmt) override;
 
     llvm::Value *exp_to_bool(llvm::Value *cond);
 
@@ -48,16 +49,13 @@ private:
     std::unique_ptr<llvm::Module> module;
     std::map<std::string, llvm::Value*> location;
 
-    llvm::Value *tmp_v = nullptr;
-    llvm::Value *tmp_p = nullptr;
-    llvm::Type *tmp_t = nullptr;
+    llvm::Value *tmp_v, *tmp_p;
+    llvm::Type *tmp_t;
 
     llvm::IntegerType *int_t, *bool_t;
     llvm::Type *real_t;
 
-    llvm::Constant *fmt_lld = nullptr;
-    llvm::Constant *fmt_f = nullptr;
-    llvm::Constant *fmt_s = nullptr;
+    llvm::Constant *fmt_lld, *fmt_lld_ln, *fmt_f, *fmt_f_ln, *fmt_s, *fmt_s_ln;
 
     int spaces = 0;
     bool global_vars_pass = true;

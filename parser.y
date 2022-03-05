@@ -21,7 +21,7 @@
 %token AND OR XOR NOT                         // and or xor not
 %token LT GT EQ LEQ GEQ NEQ                   // < > = <= >= /=
 %token ARRAY RECORD ROUTINE RETURN END        // array record routine return end
-%token PRINT STRING                           // print <string>
+%token PRINT PRINTLN STRING                   // print println <string>
 %token IF THEN ELSE WHILE FOR IN LOOP REVERSE // if then else while for in loop reverse
 
 %type <std::string> ID STRING
@@ -42,6 +42,7 @@
 %type <ast::np<ast::AssignmentStatement>> ASSIGNMENT_STATEMENT
 %type <ast::np<ast::IfStatement>> IF_STATEMENT
 %type <ast::np<ast::WhileLoop>> WHILE_LOOP
+%type <ast::np<ast::ForLoop>> FOR_LOOP
 
 %left COMMA
 %right BECOMES
@@ -252,6 +253,7 @@ STATEMENT :
     | ASSIGNMENT_STATEMENT { $$ = $1; }
     | IF_STATEMENT         { $$ = $1; }
     | WHILE_LOOP           { $$ = $1; }
+    | FOR_LOOP             { $$ = $1; }
 ;
 
 RETURN_STATEMENT :
@@ -268,7 +270,17 @@ PRINT_STATEMENT :
     }
     | PRINT STRING SEMICOLON {
         PDEBUG("PRINT_STATEMENT")
-        $$ = std::make_shared<ast::PrintStatement>($2.substr(1, $2.size()-2));
+        $2 = $2.substr(1, $2.size()-2);
+        $$ = std::make_shared<ast::PrintStatement>(std::make_shared<std::string>($2));
+    }
+    | PRINTLN EXPRESSION SEMICOLON {
+        PDEBUG("PRINTLN_STATEMENT")
+        $$ = std::make_shared<ast::PrintStatement>($2, true);
+    }
+    | PRINTLN STRING SEMICOLON {
+        PDEBUG("PRINTLN_STATEMENT")
+        $2 = $2.substr(1, $2.size()-2);
+        $$ = std::make_shared<ast::PrintStatement>(std::make_shared<std::string>($2), true);
     }
 ;
 
@@ -294,6 +306,35 @@ WHILE_LOOP :
     WHILE EXPRESSION LOOP BODY END {
         PDEBUG("WHILE_LOOP")
         $$ = std::make_shared<ast::WhileLoop>($2, $4);
+    }
+;
+
+FOR_LOOP :
+    FOR ID IN EXPRESSION DDOT EXPRESSION LOOP BODY END {
+        PDEBUG("FOR_LOOP")
+
+        auto loop_var = std::make_shared<ast::VariableDeclaration>($2, $4);
+        auto id = std::make_shared<ast::Identifier>($2);
+        auto one = std::make_shared<ast::IntLiteral>(1);
+        auto idp1 = std::make_shared<ast::BinaryExpression>(id, ast::OperatorEnum::PLUS, one);
+        auto cond = std::make_shared<ast::BinaryExpression>(id, ast::OperatorEnum::LEQ, $6);
+        auto body = $8;
+        auto action = std::make_shared<ast::AssignmentStatement>(id, idp1);
+
+        $$ = std::make_shared<ast::ForLoop>(loop_var, cond, body, action);
+    }
+    | FOR ID IN REVERSE EXPRESSION DDOT EXPRESSION LOOP BODY END {
+        PDEBUG("FOR_REVERSE_LOOP")
+
+        auto loop_var = std::make_shared<ast::VariableDeclaration>($2, $7);
+        auto id = std::make_shared<ast::Identifier>($2);
+        auto one = std::make_shared<ast::IntLiteral>(1);
+        auto idm1 = std::make_shared<ast::BinaryExpression>(id, ast::OperatorEnum::MINUS, one);
+        auto cond = std::make_shared<ast::BinaryExpression>(id, ast::OperatorEnum::GEQ, $5);
+        auto body = $9;
+        auto action = std::make_shared<ast::AssignmentStatement>(id, idm1);
+
+        $$ = std::make_shared<ast::ForLoop>(loop_var, cond, body, action);
     }
 ;
 
