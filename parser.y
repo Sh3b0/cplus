@@ -41,6 +41,7 @@
 %type <ast::np<ast::PrintStatement>> PRINT_STATEMENT
 %type <ast::np<ast::AssignmentStatement>> ASSIGNMENT_STATEMENT
 %type <ast::np<ast::IfStatement>> IF_STATEMENT
+%type <ast::np<ast::WhileLoop>> WHILE_LOOP
 
 %left COMMA
 %right BECOMES
@@ -54,8 +55,7 @@
 
 %start PROGRAM
 
-%code requires
-{
+%code requires {
     #include <iostream>
     #include <string>
     #include <vector>
@@ -67,8 +67,7 @@
     }
 }
 
-%code top
-{
+%code top {
     #include "lexer.h"
     #include "shell.hpp"
 
@@ -252,6 +251,7 @@ STATEMENT :
     | PRINT_STATEMENT      { $$ = $1; }
     | ASSIGNMENT_STATEMENT { $$ = $1; }
     | IF_STATEMENT         { $$ = $1; }
+    | WHILE_LOOP           { $$ = $1; }
 ;
 
 RETURN_STATEMENT :
@@ -287,6 +287,13 @@ IF_STATEMENT :
     | IF EXPRESSION THEN BODY ELSE BODY END {
         PDEBUG("IF_ELSE_STATEMENT")
         $$ = std::make_shared<ast::IfStatement>($2, $4, $6);
+    }
+;
+
+WHILE_LOOP :
+    WHILE EXPRESSION LOOP BODY END {
+        PDEBUG("WHILE_LOOP")
+        $$ = std::make_shared<ast::WhileLoop>($2, $4);
     }
 ;
 

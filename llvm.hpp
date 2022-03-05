@@ -38,6 +38,9 @@ public:
     void visit(ast::PrintStatement *stmt) override;
     void visit(ast::AssignmentStatement *stmt) override;
     void visit(ast::IfStatement *stmt) override;
+    void visit(ast::WhileLoop *stmt) override;
+
+    llvm::Value *exp_to_bool(llvm::Value *cond);
 
 private:
     llvm::LLVMContext context;

@@ -233,7 +233,7 @@ void IRGenerator::visit(ast::Identifier* id) {
         GERROR(id->name << " is not declared.")
     }
     
-    // accessing an array element
+    // Accessing an array element
     if(id->idx) {
         id->idx->accept(this);
 
@@ -241,7 +241,7 @@ void IRGenerator::visit(ast::Identifier* id) {
         tmp_p = builder->CreateGEP(p, pop_v());
     }
 
-    // accessing a primitive or a record field
+    // Accessing a primitive or a record field
     else {
         tmp_p = p;
     }
@@ -680,22 +680,30 @@ void IRGenerator::visit(ast::AssignmentStatement* stmt) {
     BLOCK_E("AssignmentStatement")
 }
 
+// Returns the bool condition from if/while expression
+llvm::Value* IRGenerator::exp_to_bool(llvm::Value *cond) {
+    auto dtype = cond->getType();
+
+    if(dtype == bool_t) {
+        return cond;
+    }
+    else if(dtype == int_t) {
+        return builder->CreateICmpNE(cond, llvm::ConstantInt::get(context, llvm::APInt(64, 0)), "cond");
+    }
+    else if(dtype == real_t) {
+        return builder->CreateFCmpUNE(cond, llvm::ConstantFP::get(context, llvm::APFloat(0.0)), "cond");
+    }
+    else {
+        GERROR("condition expression is not of integer or boolean type")
+    }
+}
+
+
 void IRGenerator::visit(ast::IfStatement* stmt) {
     BLOCK_B("IfStatement")
 
     stmt->cond->accept(this);
-    llvm::Value *cond = pop_v();
-
-    if(!cond->getType()->isIntegerTy() ||
-        !(cond->getType()->getIntegerBitWidth() == 64 ||
-        cond->getType()->getIntegerBitWidth() == 1)) {
-        GERROR("condition expression is not of integer or boolean type")
-    }
-
-    // If cond is of type int64, compare it to 0 to create bool.
-    if(cond->getType()->getIntegerBitWidth() == 64){
-        cond = builder->CreateICmpNE(cond, llvm::ConstantInt::get(context, llvm::APInt(64, 0)), "cond");
-    }
+    auto cond = exp_to_bool(pop_v());
 
     // Get the current function
     llvm::Function* func = builder->GetInsertBlock()->getParent();
@@ -708,7 +716,7 @@ void IRGenerator::visit(ast::IfStatement* stmt) {
     // Create the conditional statement
     builder->CreateCondBr(cond, then_block, else_block ? else_block : endif);
 
-    // Then block
+    // Then
     {
         builder->SetInsertPoint(then_block);
         stmt->then_body->accept(this);
@@ -717,7 +725,7 @@ void IRGenerator::visit(ast::IfStatement* stmt) {
         then_block = builder->GetInsertBlock();
     }
     
-    // Else block
+    // Else
     if(else_block) {
         func->getBasicBlockList().push_back(else_block);
 
@@ -735,4 +743,39 @@ void IRGenerator::visit(ast::IfStatement* stmt) {
     }
     
     BLOCK_E("IfStatement")
+}
+
+void IRGenerator::visit(ast::WhileLoop* stmt) {
+    BLOCK_B("WhileLoop")
+    
+    llvm::Function* parent = builder->GetInsertBlock()->getParent();
+
+    llvm::BasicBlock* cond_block = llvm::BasicBlock::Create(context, "cond", parent);
+    llvm::BasicBlock* loop_block = llvm::BasicBlock::Create(context, "loop");
+    llvm::BasicBlock* end_block = llvm::BasicBlock::Create(context, "loopend");
+
+    // Condition
+    {
+        builder->CreateBr(cond_block);
+        builder->SetInsertPoint(cond_block);
+        stmt->cond->accept(this);
+        auto cond = exp_to_bool(pop_v());
+        builder->CreateCondBr(cond, loop_block, end_block);
+    }
+
+    // Loop
+    {
+        parent->getBasicBlockList().push_back(loop_block);
+        builder->SetInsertPoint(loop_block);
+        stmt->body->accept(this);
+        builder->CreateBr(cond_block);
+    }
+    
+    // End
+    {
+        parent->getBasicBlockList().push_back(end_block);
+        builder->SetInsertPoint(end_block);
+    }
+
+    BLOCK_E("WhileLoop")
 }

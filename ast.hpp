@@ -31,6 +31,7 @@ struct ReturnStatement;
 struct PrintStatement;
 struct AssignmentStatement;
 struct IfStatement;
+struct WhileLoop;
 } // namespace ast
 
 // Base class for code generator and anything that traverses AST.
@@ -55,6 +56,7 @@ public:
     virtual void visit(ast::PrintStatement *stmt) = 0;
     virtual void visit(ast::AssignmentStatement *stmt) = 0;
     virtual void visit(ast::IfStatement *stmt) = 0;
+    virtual void visit(ast::WhileLoop *stmt) = 0;
 };
 
 namespace ast {
@@ -339,6 +341,18 @@ struct IfStatement : Statement {
         this->cond = cond;
         this->then_body = then_body;
         this->else_body = else_body;
+    }
+
+    void accept(Visitor* v) override { v->visit(this); }
+};
+
+struct WhileLoop : Statement {
+    np<Expression> cond;
+    np<Body> body;
+
+    WhileLoop(np<Expression> cond, np<Body> body) {
+        this->cond = cond;
+        this->body = body;
     }
 
     void accept(Visitor* v) override { v->visit(this); }

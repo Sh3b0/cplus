@@ -1,11 +1,13 @@
 type int is integer;
 
 routine main() : int is
-    var tmp : int;
-    tmp := 5;
-    print tmp;       # 5
-
     print "Hello C+";
+
+    var tmp is 5;
+    while tmp loop
+        print tmp;
+        tmp := tmp - 1;
+    end
 
     var x is 5 + 5 * 3;
     var y is 5.0 - 5.0 * 4.0;
