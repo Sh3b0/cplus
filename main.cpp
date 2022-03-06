@@ -15,20 +15,24 @@ extern cplus::shell shell;
 extern ast::np<ast::Program> program;
 
 int main(int argc, char **argv) {
-    
-    std::cout << "\n\n" << YELLOW << "[LEXER]" << RESET << " and " << GREEN << "[PARSER]" << RESET << ":" << std::endl;
-    
+        
     if (shell.parse_args(argc, argv)) {
         std::cerr << RESET << RED << "Error parsing arguments\n";
         return 1;
     }
 
+    if(shell.debug) {
+        std::cout << "\n\n" << YELLOW << "[LEXER]" << RESET << " and " << GREEN << "[PARSER]" << RESET << ":" << std::endl;
+    }
+    
     if (shell.parse_program()) {
         std::cerr << RESET << RED << "Error parsing program\n";
         return 1;
     }
-
-    std::cout << CYAN << "[AST]:" << RESET << std::endl;
+    
+    if(shell.debug){
+        std::cout << CYAN << "[AST]:" << RESET << std::endl;
+    }
 
     IRGenerator gen;
     program->accept(&gen);

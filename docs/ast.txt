@@ -1,25 +1,30 @@
 Node
     Program
     VariableDeclaration
-    TypeDeclaration
     RoutineDeclaration
     Type
         IntegerType
         RealType
         BooleanType
+        ArrayType
+        RecordType
     Expression
         UnaryExpression
         BinaryExpression
         IntegerLiteral
         RealLiteral
         BooleanLiteral
+        Identifier
+        RoutineCall
     Body
     Statement
         PrintStatement
         ReturnStatement
+        AssignmentStatement
         IfStatement
         ForLoop
         WhileLoop
+        RoutineCall
 
 TypeEnum
 OperatorEnum

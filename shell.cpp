@@ -22,6 +22,7 @@ void shell::show_help() {
     std::cout << "\t-h, --help\t\tshow this help message and exit.\n";
     std::cout << "\t-d, --debug\t\tshow debug messages.\n";
     std::cout << "\t-o, --outfile outfile\texecutable file name.\n";
+    std::exit(1);
 }
 
 int shell::parse_args(int argc, char **argv) {
@@ -29,7 +30,6 @@ int shell::parse_args(int argc, char **argv) {
         std::string arg = argv[i];
         if (arg == "--help" || arg == "-h") {
             show_help();
-            return 0;
         }
         else if (arg == "-d" || arg == "--debug") {
             debug = true;
@@ -50,7 +50,6 @@ int shell::parse_args(int argc, char **argv) {
     }
     if (!infile.is_open()) {
         show_help();
-        return 1;
     }
     return 0;
 }

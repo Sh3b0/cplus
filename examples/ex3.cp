@@ -1,18 +1,21 @@
 
 routine max (a : integer, b : integer) : integer is
+    var ret : integer;
     if a > b then
-        return a;
+        ret := a;
+    else
+        ret := b;
     end
-    return b;
+    return ret;
 end
-
-type tuple is array[3] integer;
-type point is record { var x : integer; var y : integer; } end;
 
 routine say_hi() is
     println "Hello!";
     return;
 end
+
+type tuple is array[3] integer;
+type point is record { var x : integer; var y : integer; } end;
 
 routine main() : integer is
     say_hi();
@@ -24,16 +27,12 @@ routine main() : integer is
     p.x := 1;
     p.y := 2;
 
-    println p.x; # inline comment
-    println p.y; # inline comment
-
-    var h is p.x + p.y;
-    println h;
+    println p.x;
+    println p.y;
 
     var t : tuple;
     t[1] := 1;
-    var res is t[1];
-    println res;
+    println t[1];
 
     var mx is max(5, 4);
     println mx;
