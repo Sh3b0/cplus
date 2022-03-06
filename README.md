@@ -98,12 +98,12 @@ Compiler for **C+** toy imperative language, based on [LLVM](https://llvm.org/do
    ```bash
    $ ./cplus --help
    usage: cplus [options] infile
-   	infile			        path to the source code file (*.cp) to compile.
+   	infile                 path to the source code file (*.cp) to compile.
    
    options:
-   	-h, --help		        show this help message and exit.
-   	-d, --debug		        show debug messages.
-   	-o, --outfile outfile	specify executable file name.
+   	-h, --help             show this help message and exit.
+   	-d, --debug            show debug messages.
+   	-o, --outfile outfile  specify executable file name.
    ```
 
    
