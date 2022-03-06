@@ -33,6 +33,7 @@
 %type <std::vector<ast::np<ast::VariableDeclaration>>> VARIABLE_DECLARATIONS PARAMETERS
 %type <ast::np<ast::RoutineDeclaration>> ROUTINE_DECLARATION
 %type <ast::np<ast::Expression>> EXPRESSION
+%type <std::vector<ast::np<ast::Expression>>> EXPRESSIONS
 %type <ast::np<ast::Type>> TYPE PRIMITIVE_TYPE ARRAY_TYPE RECORD_TYPE
 %type <ast::np<ast::Body>> BODY
 %type <ast::np<ast::Identifier>> MODIFIABLE_PRIMARY
@@ -43,6 +44,7 @@
 %type <ast::np<ast::IfStatement>> IF_STATEMENT
 %type <ast::np<ast::WhileLoop>> WHILE_LOOP
 %type <ast::np<ast::ForLoop>> FOR_LOOP
+%type <ast::np<ast::RoutineCall>> ROUTINE_CALL
 
 %left COMMA
 %right BECOMES
@@ -94,7 +96,7 @@ COMMA_SEPARATOR : COMMA | %empty
 SEMICOLON_SEPARATOR : SEMICOLON | %empty
 ;
 
-PROGRAM:
+PROGRAM :
     %empty {
         PDEBUG("EOF")
         std::cout << '\n' << std::endl;
@@ -102,23 +104,19 @@ PROGRAM:
     | VARIABLE_DECLARATION PROGRAM {
         program->variables.push_back($1);
     }
-    | ROUTINE_DECLARATION PROGRAM {
-        program->routines.push_back($1);
-    }
+    | ROUTINE_DECLARATION PROGRAM
     | GLOBAL_TYPE_DECLARATION PROGRAM
 ;
 
-VARIABLE_DECLARATION:
+VARIABLE_DECLARATION :
     VAR ID IS EXPRESSION SEMICOLON {
-        PDEBUG("VARIABLE_DECLARATION")
+        PDEBUG("VARIABLE_DECLARATION_W/O_TYPE")
         $$ = std::make_shared<ast::VariableDeclaration> ($2, $4);
     }
-
     | VAR ID COLON TYPE SEMICOLON {
-        PDEBUG("VARIABLE_DECLARATION")
+        PDEBUG("VARIABLE_DECLARATION_W/O_IV")
         $$ = std::make_shared<ast::VariableDeclaration> ($2, $4);
     }
-
     | VAR ID COLON TYPE IS EXPRESSION SEMICOLON {
         PDEBUG("VARIABLE_DECLARATION")
         $$ = std::make_shared<ast::VariableDeclaration> ($2, $4, $6);
@@ -138,14 +136,17 @@ MODIFIABLE_PRIMARY :
 ;
 
 EXPRESSION :
-    MODIFIABLE_PRIMARY                { $$ = $1; }
-    | INT_VAL                         { $$ = std::make_shared<ast::IntLiteral>($1); }
+    INT_VAL                         { $$ = std::make_shared<ast::IntLiteral>($1); }
     | REAL_VAL                        { $$ = std::make_shared<ast::RealLiteral>($1); }
     | BOOL_VAL                        { $$ = std::make_shared<ast::BoolLiteral>($1); }
-
+    | ROUTINE_CALL                    {
+        PDEBUG("ROUTINE_CALL_EXP")
+        $$ = $1;    
+    }
     | B_L EXPRESSION B_R              { $$ = $2; }
     | NOT EXPRESSION                  { $$ = std::make_shared<ast::UnaryExpression>(ast::OperatorEnum::NOT, $2); }
-    | MINUS EXPRESSION                { $$ = std::make_shared<ast::UnaryExpression>(ast::OperatorEnum::MINUS, $2); }
+    /* | MINUS EXPRESSION                { $$ = std::make_shared<ast::UnaryExpression>(ast::OperatorEnum::MINUS, $2); } */
+    | MODIFIABLE_PRIMARY                { $$ = $1; }
     
     | EXPRESSION PLUS EXPRESSION      { $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::PLUS, $3); }
     | EXPRESSION MINUS EXPRESSION     { $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::MINUS, $3); } 
@@ -173,7 +174,7 @@ TYPE :
     }
 ;
 
-PRIMITIVE_TYPE:
+PRIMITIVE_TYPE :
     INT_KW    { $$ = std::make_shared<ast::IntType>(); }
     | REAL_KW { $$ = std::make_shared<ast::RealType>(); }
     | BOOL_KW { $$ = std::make_shared<ast::BoolType>(); }
@@ -191,7 +192,7 @@ RECORD_TYPE : RECORD CB_L VARIABLE_DECLARATIONS CB_R END {
 }
 ;
 
-VARIABLE_DECLARATIONS:
+VARIABLE_DECLARATIONS :
     %empty {
         std::vector<ast::np<ast::VariableDeclaration>> tmp;
         $$ = tmp;
@@ -204,12 +205,14 @@ VARIABLE_DECLARATIONS:
 
 ROUTINE_DECLARATION :
     ROUTINE ID B_L PARAMETERS B_R IS BODY END {
-        PDEBUG("ROUTINE_DECLARATION")
+        PDEBUG("PROCEDURE_DECLARATION")
         $$ = std::make_shared<ast::RoutineDeclaration>($2, $4, $7);
+        program->routines.push_back($$);
     }
     | ROUTINE ID B_L PARAMETERS B_R COLON TYPE IS BODY END {
-        PDEBUG("ROUTINE_DECLARATION")
+        PDEBUG("FUNCTION_DECLARATION")
         $$ = std::make_shared<ast::RoutineDeclaration>($2, $4, $9, $7);
+        program->routines.push_back($$);
     }
 ;
 
@@ -248,37 +251,45 @@ BODY :
 ;
 
 STATEMENT :
-    RETURN_STATEMENT       { $$ = $1; }
-    | PRINT_STATEMENT      { $$ = $1; }
-    | ASSIGNMENT_STATEMENT { $$ = $1; }
-    | IF_STATEMENT         { $$ = $1; }
-    | WHILE_LOOP           { $$ = $1; }
-    | FOR_LOOP             { $$ = $1; }
+    RETURN_STATEMENT         { $$ = $1; }
+    | PRINT_STATEMENT        { $$ = $1; }
+    | ASSIGNMENT_STATEMENT   { $$ = $1; }
+    | IF_STATEMENT           { $$ = $1; }
+    | WHILE_LOOP             { $$ = $1; }
+    | FOR_LOOP               { $$ = $1; }
+    | ROUTINE_CALL SEMICOLON {
+        PDEBUG("ROUTINE_CALL_STMT")
+        $$ = $1;
+    }
 ;
 
 RETURN_STATEMENT :
     RETURN EXPRESSION SEMICOLON {
-        PDEBUG("RETURN_STATEMENT")
+        PDEBUG("RETURN_EXP_STATEMENT")
         $$ = std::make_shared<ast::ReturnStatement>($2);
+    }
+    | RETURN SEMICOLON {
+        PDEBUG("RETURN_STATEMENT")
+        $$ = std::make_shared<ast::ReturnStatement>();
     }
 ;
 
 PRINT_STATEMENT :
     PRINT EXPRESSION SEMICOLON {
-        PDEBUG("PRINT_STATEMENT")
+        PDEBUG("PRINT_EXP_STATEMENT")
         $$ = std::make_shared<ast::PrintStatement>($2);
     }
     | PRINT STRING SEMICOLON {
-        PDEBUG("PRINT_STATEMENT")
+        PDEBUG("PRINT_STR_STATEMENT")
         $2 = $2.substr(1, $2.size()-2);
         $$ = std::make_shared<ast::PrintStatement>(std::make_shared<std::string>($2));
     }
     | PRINTLN EXPRESSION SEMICOLON {
-        PDEBUG("PRINTLN_STATEMENT")
+        PDEBUG("PRINTLN_EXP_STATEMENT")
         $$ = std::make_shared<ast::PrintStatement>($2, true);
     }
     | PRINTLN STRING SEMICOLON {
-        PDEBUG("PRINTLN_STATEMENT")
+        PDEBUG("PRINTLN_STR_STATEMENT")
         $2 = $2.substr(1, $2.size()-2);
         $$ = std::make_shared<ast::PrintStatement>(std::make_shared<std::string>($2), true);
     }
@@ -335,6 +346,29 @@ FOR_LOOP :
         auto action = std::make_shared<ast::AssignmentStatement>(id, idm1);
 
         $$ = std::make_shared<ast::ForLoop>(loop_var, cond, body, action);
+    }
+;
+
+ROUTINE_CALL :
+    ID B_L EXPRESSIONS B_R {
+        ast::np<ast::RoutineCall> call;
+        for(auto u : program->routines) {
+            if(u->name == $1) {
+                $$ = std::make_shared<ast::RoutineCall>(u, $3);
+                break;        
+            }
+        }
+    }
+;
+
+EXPRESSIONS :
+    %empty {
+        std::vector<ast::np<ast::Expression>> tmp;
+        $$ = tmp;
+    }
+    | EXPRESSION COMMA_SEPARATOR EXPRESSIONS {
+        $3.push_back($1);
+        $$ = $3;
     }
 ;
 

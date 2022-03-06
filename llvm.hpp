@@ -40,6 +40,7 @@ public:
     void visit(ast::IfStatement *stmt) override;
     void visit(ast::WhileLoop *stmt) override;
     void visit(ast::ForLoop *stmt) override;
+    void visit(ast::RoutineCall *stmt) override;
 
     llvm::Value *exp_to_bool(llvm::Value *cond);
 
@@ -47,8 +48,9 @@ private:
     llvm::LLVMContext context;
     std::unique_ptr<llvm::IRBuilder<>> builder;
     std::unique_ptr<llvm::Module> module;
-    std::map<std::string, llvm::Value*> location;
-
+    std::map<std::string, llvm::Value*> ptrs_table;
+    std::map<std::string, llvm::Value*> args_table;
+    
     llvm::Value *tmp_v, *tmp_p;
     llvm::Type *tmp_t;
 
@@ -59,6 +61,7 @@ private:
 
     int spaces = 0;
     bool global_vars_pass = true;
+    bool signature_pass = false;
     bool is_first_routine = true;
 
     llvm::Value *pop_v();

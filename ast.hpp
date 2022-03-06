@@ -33,6 +33,7 @@ struct AssignmentStatement;
 struct IfStatement;
 struct WhileLoop;
 struct ForLoop;
+struct RoutineCall;
 } // namespace ast
 
 // Base class for code generator and anything that traverses AST.
@@ -59,6 +60,7 @@ public:
     virtual void visit(ast::IfStatement *stmt) = 0;
     virtual void visit(ast::WhileLoop *stmt) = 0;
     virtual void visit(ast::ForLoop *stmt) = 0;
+    virtual void visit(ast::RoutineCall *stmt) = 0;
 };
 
 namespace ast {
@@ -92,12 +94,12 @@ struct Expression : Node {
 // Base class for Types
 struct Type : Node {
     virtual TypeEnum getType() { return TypeEnum::INT; };
-    virtual void accept(Visitor* v) = 0;
+    virtual void accept(Visitor *v) = 0;
 };
 
 // Base class for Statements
 struct Statement : virtual Node {
-    void accept(Visitor* v) override = 0;
+    void accept(Visitor *v) override = 0;
 };
 
 // <Types>
@@ -105,48 +107,48 @@ struct IntType : Type {
     IntType() {}
     TypeEnum getType() { return TypeEnum::INT; }
 
-    void accept(Visitor* v) override { v->visit(this); }
+    void accept(Visitor *v) override { v->visit(this); }
 };
 
 struct RealType : Type {
     RealType() {}
     TypeEnum getType() { return TypeEnum::REAL; }
 
-    void accept(Visitor* v) override { v->visit(this); }
+    void accept(Visitor *v) override { v->visit(this); }
 };
 
 struct BoolType : Type {
     BoolType() {}
     TypeEnum getType() { return TypeEnum::BOOL; }
 
-    void accept(Visitor* v) override { v->visit(this); }
+    void accept(Visitor *v) override { v->visit(this); }
 };
 
 struct ArrayType : Type {
     np<Expression> size;
     np<Type> dtype;
     
-    ArrayType(np<Expression> size, np<Type>dtype){
+    ArrayType(np<Expression> size, np<Type>dtype) {
         this->size = size;
         this->dtype = dtype;
     }
 
     TypeEnum getType() { return TypeEnum::ARRAY; }
 
-    void accept(Visitor* v) override { v->visit(this); }
+    void accept(Visitor *v) override { v->visit(this); }
 };
 
 struct RecordType : Type {
     std::string name; // set by llvm vardecl or typedecl
     std::vector<np<VariableDeclaration>> fields;
     
-    RecordType(std::vector<np<VariableDeclaration>> fields){
+    RecordType(std::vector<np<VariableDeclaration>> fields) {
         this->fields = fields;
     }
 
     TypeEnum getType() { return TypeEnum::RECORD; }
 
-    void accept(Visitor* v) override { v->visit(this); }
+    void accept(Visitor *v) override { v->visit(this); }
 };
 
 // </Types>
@@ -184,7 +186,7 @@ struct IntLiteral : Expression {
         this->value = value;
     }
 
-    void accept(Visitor* v) override { v->visit(this); }
+    void accept(Visitor *v) override { v->visit(this); }
 };
 
 struct RealLiteral : Expression {
@@ -195,7 +197,7 @@ struct RealLiteral : Expression {
         this->value = value;
     }
 
-    void accept(Visitor* v) override { v->visit(this); }
+    void accept(Visitor *v) override { v->visit(this); }
 };
 
 struct BoolLiteral : Expression {
@@ -206,7 +208,7 @@ struct BoolLiteral : Expression {
         this->value = value;
     }
 
-    void accept(Visitor* v) override { v->visit(this); }
+    void accept(Visitor *v) override { v->visit(this); }
 };
 
 struct Identifier : Expression {
@@ -265,7 +267,7 @@ struct Body : Node {
         this->statements = statements;
     }
 
-    void accept(Visitor* v) override { v->visit(this); }
+    void accept(Visitor *v) override { v->visit(this); }
 };
 
 struct RoutineDeclaration : Node {
@@ -284,23 +286,24 @@ struct RoutineDeclaration : Node {
     RoutineDeclaration(std::string name, std::vector<np<VariableDeclaration>> params, np<Body> body) {
         this->name = name;
         this->params = params;
-        // this->rtype = rtype; // TODO: detect rtype dynamically from return statement.
         this->body = body;
     }
 
-    void accept(Visitor* v) override { v->visit(this); }
+    void accept(Visitor *v) override { v->visit(this); }
 };
 
 // </Nodes>
 // <Statements>
 struct ReturnStatement : Statement {
     np<Expression> exp;
+    
+    ReturnStatement() {}
 
     ReturnStatement(np<Expression> exp) {
         this->exp = exp;
     }
 
-    void accept(Visitor* v) override { v->visit(this); }
+    void accept(Visitor *v) override { v->visit(this); }
 };
 
 struct PrintStatement : Statement {
@@ -318,7 +321,7 @@ struct PrintStatement : Statement {
         this->endl = endl;
     }
 
-    void accept(Visitor* v) override { v->visit(this); }
+    void accept(Visitor *v) override { v->visit(this); }
 };
 
 struct AssignmentStatement : Statement {
@@ -330,7 +333,7 @@ struct AssignmentStatement : Statement {
         this->exp = exp;
     }
 
-    void accept(Visitor* v) override { v->visit(this); }
+    void accept(Visitor *v) override { v->visit(this); }
 };
 
 struct IfStatement : Statement {
@@ -348,7 +351,7 @@ struct IfStatement : Statement {
         this->else_body = else_body;
     }
 
-    void accept(Visitor* v) override { v->visit(this); }
+    void accept(Visitor *v) override { v->visit(this); }
 };
 
 struct WhileLoop : Statement {
@@ -360,7 +363,7 @@ struct WhileLoop : Statement {
         this->body = body;
     }
 
-    void accept(Visitor* v) override { v->visit(this); }
+    void accept(Visitor *v) override { v->visit(this); }
 };
 
 struct ForLoop : Statement {
@@ -376,7 +379,19 @@ struct ForLoop : Statement {
         this->action = action;
     }
 
-    void accept(Visitor* v) override { v->visit(this); }
+    void accept(Visitor *v) override { v->visit(this); }
+};
+
+struct RoutineCall : Statement, Expression {
+    np<RoutineDeclaration> routine;
+    std::vector<np<Expression>> args;
+
+    RoutineCall(np<RoutineDeclaration> routine, std::vector<np<Expression>> args) {
+        this->routine = routine;
+        this->args = args;
+    }
+
+    void accept(Visitor *v) override { v->visit(this); }
 };
 
 // </Statements>

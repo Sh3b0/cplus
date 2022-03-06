@@ -25,10 +25,15 @@ routine main() : integer is
     var blue : color;
     blue.b := 255;
 
+    println blue.b;
+
     var fibonacci : array[5] integer;
     fibonacci[1] := 1;
     fibonacci[2] := 2;
     fibonacci[3] := fibonacci[1] + fibonacci[2];
     fibonacci[4] := fibonacci[2] + fibonacci[3];
     fibonacci[5] := fibonacci[3] + fibonacci[4];
+
+    println fibonacci[5];
+    return 0;
 end

@@ -6,13 +6,13 @@
 #define RESET       "\033[0m"
 
 #define GDEBUG(X)   if (shell.debug) std::cout << CYAN << X << RESET << std::endl;
-#define GWARNING(X) std::cerr << YELLOW << "[LLVM]: [WARNING]: " << X << RESET << std::endl;
+#define GWARNING(X) std::cerr << YELLOW << "[LLVM]: [WARNINGS]:\n" << X << RESET << std::endl;
 #define GERROR(X)   std::cerr << RED << "[LLVM]: [ERROR]: " << X << RESET << std::endl; std::exit(1);
 
 #define BLOCK_B(X)                                           \
-    if (shell.debug){                                        \
+    if (shell.debug) {                                       \
         std::cout << CYAN;                                   \
-        for(int i=0; i<spaces; i++) {                        \
+        for (int i=0; i<spaces; i++) {                        \
             i % 4 ? std::cout << " " : std::cout << "|";     \
         }                                                    \
         std::cout << "<" << X << ">" << RESET << std::endl;  \
@@ -20,10 +20,10 @@
     }
 
 #define BLOCK_E(X)                                           \
-    if (shell.debug){                                        \
+    if (shell.debug) {                                       \
         spaces -= 4;                                         \
         std::cout << CYAN;                                   \
-        for(int i=0; i<spaces; i++) {                        \
+        for (int i=0; i<spaces; i++) {                        \
             i % 4 ? std::cout << " " : std::cout << "|";     \
         }                                                    \
         std::cout << "</" << X << ">" << RESET << std::endl; \
@@ -54,7 +54,7 @@ void IRGenerator::generate() {
         GWARNING(out.str())
     }
 
-    FILE* f = fopen("ir.ll", "w");
+    FILE *f = fopen("ir.ll", "w");
     llvm::raw_fd_ostream outfile(fileno(f), true);
     module->print(outfile, nullptr);
 }
@@ -81,15 +81,14 @@ void IRGenerator::visit(ast::Program *program) {
     BLOCK_B("Program")
 
     std::reverse(program->variables.begin(), program->variables.end());
-    std::reverse(program->routines.begin(), program->routines.end());
 
-    for (auto u : program->variables) {
+    for (auto& u : program->variables) {
         u->accept(this);
     }
     
     global_vars_pass = false;
 
-    for (auto u : program->routines) {
+    for (auto& u : program->routines) {
         u->accept(this);
         is_first_routine = false;
     }
@@ -97,7 +96,7 @@ void IRGenerator::visit(ast::Program *program) {
     BLOCK_E("Program")
 }
 
-// Defines a global, or stores a pointer to the created local var in location map.
+// Defines a global, or stores a pointer to the created local var in ptrs_table map.
 void IRGenerator::visit(ast::VariableDeclaration *var) {
     BLOCK_B("VariableDeclaration")
 
@@ -109,7 +108,7 @@ void IRGenerator::visit(ast::VariableDeclaration *var) {
         // dtype is an array
         if (var->dtype->getType() == ast::TypeEnum::ARRAY) {
             var->dtype->accept(this);       // array will be created by this visit,
-            location[var->name] = pop_p();  // save a pointer to the array location for later access.
+            ptrs_table[var->name] = pop_p();  // save a pointer to the array ptrs_table for later access.
             BLOCK_E("VariableDeclaration")
             return;
         }
@@ -216,20 +215,29 @@ void IRGenerator::visit(ast::VariableDeclaration *var) {
         }
         
         // Save var location for later reference
-        location[var->name] = p;
+        ptrs_table[var->name] = p;
     }
 
     BLOCK_E("VariableDeclaration")
 }
 
 // Sets tmp_p and optionally tmp_v and tmp_t
-void IRGenerator::visit(ast::Identifier* id) {
+void IRGenerator::visit(ast::Identifier *id) {
     BLOCK_B("Identifier")
 
     auto global = module->getNamedGlobal(id->name);
-    auto p = global ? global : location[id->name];
-
-    if (!p) {
+    llvm::Value *p;
+    if(global) {
+        p = global;
+    }
+    else if(args_table[id->name]) {
+        tmp_v = args_table[id->name];
+        return;
+    }
+    else if(ptrs_table[id->name]) {
+        p = ptrs_table[id->name];
+    }
+    else {
         GERROR(id->name << " is not declared.")
     }
     
@@ -248,6 +256,7 @@ void IRGenerator::visit(ast::Identifier* id) {
 
     // If a value is stored there, load it, otherwise leave tmp_v and tmp_t as nullptrs.
     // Other visits such as PrintStatement should handle unassigned values.
+    // TODO: remove this and handle loading in the appropriate places
     auto val = builder->CreateLoad(tmp_p, id->name);
     if(val) {
         tmp_v = val;
@@ -258,7 +267,7 @@ void IRGenerator::visit(ast::Identifier* id) {
 }
 
 // Sets tmp_v and tmp_t
-void IRGenerator::visit(ast::UnaryExpression* exp) {
+void IRGenerator::visit(ast::UnaryExpression *exp) {
     BLOCK_B("UnaryExpression")
     
     exp->operand->accept(this);
@@ -286,7 +295,7 @@ void IRGenerator::visit(ast::UnaryExpression* exp) {
 }
 
 // Sets tmp_v and tmp_t
-void IRGenerator::visit(ast::BinaryExpression* exp) {
+void IRGenerator::visit(ast::BinaryExpression *exp) {
     BLOCK_B("BinaryExpression")
 
     exp->lhs->accept(this);
@@ -294,24 +303,17 @@ void IRGenerator::visit(ast::BinaryExpression* exp) {
 
     exp->rhs->accept(this);
     llvm::Value *R = pop_v();
-
-    // if(shell.debug) {
-    //     L->print(llvm::outs());
-    //     std:: cout << " " << op_to_str[exp->op] << " " << std::flush;
-    //     R->print(llvm::outs());
-    //     std::cout << std::endl;
-    // }
     
     bool float_exp = false, bool_exp = false;
-    if(L->getType()->isFloatingPointTy() && R->getType()->isIntegerTy()){
+    if(L->getType()->isFloatingPointTy() && R->getType()->isIntegerTy()) {
         float_exp = true;
         R = builder->CreateUIToFP(R, real_t);
     }
-    else if(L->getType()->isIntegerTy() && R->getType()->isFloatingPointTy()){
+    else if(L->getType()->isIntegerTy() && R->getType()->isFloatingPointTy()) {
         float_exp = true;
         L = builder->CreateUIToFP(L, real_t);
     }
-    else if (L->getType()->isFloatingPointTy() && R->getType()->isFloatingPointTy()){
+    else if (L->getType()->isFloatingPointTy() && R->getType()->isFloatingPointTy()) {
         float_exp = true;
     }
 
@@ -398,7 +400,7 @@ void IRGenerator::visit(ast::BinaryExpression* exp) {
     if(bool_exp) {
         tmp_t = bool_t;
     }
-    else if(float_exp){
+    else if(float_exp) {
         tmp_t = real_t;
     }
     else {
@@ -428,6 +430,10 @@ void IRGenerator::visit(ast::ArrayType *at) {
         GERROR("Global arrays are not supported")
     }
 
+    if(signature_pass) {
+        return;
+    }
+    
     at->size->accept(this);
     auto size = pop_v();
 
@@ -445,8 +451,12 @@ void IRGenerator::visit(ast::RecordType *rt) {
     if(global_vars_pass) {
         GERROR("Global records are not supported")
     }
+    
+    if(signature_pass) {
+        return;
+    }
 
-    for(auto field : rt->fields) {
+    for (auto& field : rt->fields) {
         field->name = rt->name + "." + field->name;
         field->accept(this); // Creates a var with name "{rt->name}.{field->name}"
     }
@@ -470,50 +480,52 @@ void IRGenerator::visit(ast::BoolLiteral *bl) {
 }
 
 // Sets tmp_v (the function pointer)
-void IRGenerator::visit(ast::RoutineDeclaration* routine) {
+void IRGenerator::visit(ast::RoutineDeclaration *routine) {
     BLOCK_B("RoutineDeclaration")
 
-    // Types of the parameters
-    std::vector<llvm::Type*> paramTypes;
-    for (auto& param : routine->params) {
-        param->dtype->accept(this);
-        paramTypes.push_back(pop_t());
-    }
-
-    // The routine's return type
+    signature_pass = true;
     llvm::Type *rtype = llvm::Type::getVoidTy(context);
     if (routine->rtype) {
         routine->rtype->accept(this);
-        rtype = pop_t();
+        auto dtype = pop_t();
+        if(!dtype) {
+            GERROR("Returning non-primitives from routines is not supported")
+        }
+        rtype = dtype;
     }
 
-    // The function's type: (return type, parameter types, varargs?)
-    llvm::FunctionType *ft = llvm::FunctionType::get(rtype, paramTypes, false);
+    std::vector<llvm::Type*> param_types;
+    for (auto& param : routine->params) {
+        param->dtype->accept(this);
+        auto dtype = pop_t();
+        if(!dtype) {
+            GERROR("Passing non-primitives to routines is not supported")
+        }
+        param_types.push_back(dtype);
+    }
+    signature_pass = false;
 
-    // The actual function from the type, local to this module, with the given name
-    llvm::Function* fun = llvm::Function::Create(
+    llvm::FunctionType *ft = llvm::FunctionType::get(rtype, param_types, false);
+    llvm::Function *to_call = llvm::Function::Create(
         ft,
         llvm::Function::ExternalLinkage,
         routine->name,
         module.get()
     );
 
-    // Give the parameters their names
     unsigned idx = 0;
-    for (auto& arg : fun->args()) {
+    for (auto& arg : to_call->args()) {
         arg.setName(routine->params[idx++]->name);
     }
 
-    // Create a new basic block to start inserting statements into
-    llvm::BasicBlock* bb = llvm::BasicBlock::Create(context, "entry", fun);
-
-    // Tell the builder that upcoming instructions should go into this block
+    llvm::BasicBlock *bb = llvm::BasicBlock::Create(context, "entry", to_call);
     builder->SetInsertPoint(bb);
 
-    // Record the function arguments in the location map
-    // location.clear();
-    for (auto& arg : fun->args()) {
-        location[arg.getName()] = &arg;
+    args_table.clear();
+    idx = 0;
+    for (auto& arg : to_call->args()) {
+        args_table[arg.getName()] = &arg;
+        // args_table[arg.getName()]->getType()->print(llvm::outs());
     }
 
     // Create globals needed for PrintStatement
@@ -521,34 +533,28 @@ void IRGenerator::visit(ast::RoutineDeclaration* routine) {
         fmt_lld = builder->CreateGlobalStringPtr(llvm::StringRef("%lld"), "fmt_lld");
         fmt_f = builder->CreateGlobalStringPtr(llvm::StringRef("%f"), "fmt_f");
         fmt_s = builder->CreateGlobalStringPtr(llvm::StringRef("%s"), "fmt_s");
-        fmt_lld_ln = builder->CreateGlobalStringPtr(llvm::StringRef("%lld\n"), "fmt_lld");
-        fmt_f_ln = builder->CreateGlobalStringPtr(llvm::StringRef("%f\n"), "fmt_f");
-        fmt_s_ln = builder->CreateGlobalStringPtr(llvm::StringRef("%s\n"), "fmt_s");
+        fmt_lld_ln = builder->CreateGlobalStringPtr(llvm::StringRef("%lld\n"), "fmt_lld_ln");
+        fmt_f_ln = builder->CreateGlobalStringPtr(llvm::StringRef("%f\n"), "fmt_f_ln");
+        fmt_s_ln = builder->CreateGlobalStringPtr(llvm::StringRef("%s\n"), "fmt_s_ln");
     }
 
     routine->body->accept(this);
-    llvm::verifyFunction(*fun);
-    tmp_v = fun;
+    llvm::verifyFunction(*to_call);
+    tmp_v = to_call;
 
     BLOCK_E("RoutineDeclaration")
 }
 
-void IRGenerator::visit(ast::Body* body) {
+void IRGenerator::visit(ast::Body *body) {
     BLOCK_B("Body")
 
     auto vars = body->variables;
     auto stmts = body->statements;
 
-    // std::cout << "[LLVM]: vars = " << body->variables.size() << std::endl;
-    // std::cout << "[LLVM]: stmts = " << body->statements.size() << std::endl;
-
     // Parse tree pushed them in reverse order.
     std::reverse(vars.begin(), vars.end());
     std::reverse(stmts.begin(), stmts.end());
 
-    // for (auto& type : body->types) {
-    //     type->accept(this);
-    // }
     for (auto& var : vars) {
         var->accept(this);
     }
@@ -559,7 +565,7 @@ void IRGenerator::visit(ast::Body* body) {
     BLOCK_E("Body")
 }
 
-void IRGenerator::visit(ast::ReturnStatement* stmt) {
+void IRGenerator::visit(ast::ReturnStatement *stmt) {
     BLOCK_B("ReturnStatement")
 
     llvm::Value *rval = nullptr;
@@ -567,12 +573,12 @@ void IRGenerator::visit(ast::ReturnStatement* stmt) {
         stmt->exp->accept(this);
         rval = pop_v();
     }
-    builder->CreateRet(rval);
+    tmp_v = builder->CreateRet(rval);
 
     BLOCK_E("ReturnStatement")
 }
 
-void IRGenerator::visit(ast::PrintStatement* stmt) {
+void IRGenerator::visit(ast::PrintStatement *stmt) {
     BLOCK_B("PrintStatement")
 
     llvm::Value *to_print;
@@ -637,7 +643,7 @@ void IRGenerator::visit(ast::PrintStatement* stmt) {
     BLOCK_E("PrintStatement")
 }
 
-void IRGenerator::visit(ast::AssignmentStatement* stmt) {
+void IRGenerator::visit(ast::AssignmentStatement *stmt) {
     BLOCK_B("AssignmentStatement")
 
     // id_loc is a pointer to the modifiable_primary to be accessed
@@ -684,7 +690,7 @@ void IRGenerator::visit(ast::AssignmentStatement* stmt) {
 }
 
 // Returns the bool condition from if/while expression
-llvm::Value* IRGenerator::exp_to_bool(llvm::Value *cond) {
+llvm::Value *IRGenerator::exp_to_bool(llvm::Value *cond) {
     auto dtype = cond->getType();
 
     if(dtype == bool_t) {
@@ -702,19 +708,19 @@ llvm::Value* IRGenerator::exp_to_bool(llvm::Value *cond) {
 }
 
 
-void IRGenerator::visit(ast::IfStatement* stmt) {
+void IRGenerator::visit(ast::IfStatement *stmt) {
     BLOCK_B("IfStatement")
 
     stmt->cond->accept(this);
     auto cond = exp_to_bool(pop_v());
 
     // Get the current function
-    llvm::Function* func = builder->GetInsertBlock()->getParent();
+    llvm::Function *func = builder->GetInsertBlock()->getParent();
 
     // Create blocks for the then, else, endif.
-    llvm::BasicBlock* then_block = llvm::BasicBlock::Create(context, "then", func);
-    llvm::BasicBlock* else_block = stmt->else_body ? llvm::BasicBlock::Create(context, "else") : nullptr;
-    llvm::BasicBlock* endif = llvm::BasicBlock::Create(context, "endif");
+    llvm::BasicBlock *then_block = llvm::BasicBlock::Create(context, "then", func);
+    llvm::BasicBlock *else_block = stmt->else_body ? llvm::BasicBlock::Create(context, "else") : nullptr;
+    llvm::BasicBlock *endif = llvm::BasicBlock::Create(context, "endif");
 
     // Create the conditional statement
     builder->CreateCondBr(cond, then_block, else_block ? else_block : endif);
@@ -748,14 +754,14 @@ void IRGenerator::visit(ast::IfStatement* stmt) {
     BLOCK_E("IfStatement")
 }
 
-void IRGenerator::visit(ast::WhileLoop* stmt) {
+void IRGenerator::visit(ast::WhileLoop *stmt) {
     BLOCK_B("WhileLoop")
     
-    llvm::Function* parent = builder->GetInsertBlock()->getParent();
+    llvm::Function *parent = builder->GetInsertBlock()->getParent();
 
-    llvm::BasicBlock* cond_block = llvm::BasicBlock::Create(context, "cond", parent);
-    llvm::BasicBlock* loop_block = llvm::BasicBlock::Create(context, "loop");
-    llvm::BasicBlock* end_block = llvm::BasicBlock::Create(context, "loopend");
+    llvm::BasicBlock *cond_block = llvm::BasicBlock::Create(context, "cond", parent);
+    llvm::BasicBlock *loop_block = llvm::BasicBlock::Create(context, "loop");
+    llvm::BasicBlock *end_block = llvm::BasicBlock::Create(context, "loopend");
 
     // Condition
     {
@@ -784,14 +790,14 @@ void IRGenerator::visit(ast::WhileLoop* stmt) {
 }
 
 // For loop is just a fancy while loop :)
-void IRGenerator::visit(ast::ForLoop* stmt) {
+void IRGenerator::visit(ast::ForLoop *stmt) {
     BLOCK_B("ForLoop")
     
-    llvm::Function* parent = builder->GetInsertBlock()->getParent();
+    llvm::Function *parent = builder->GetInsertBlock()->getParent();
 
-    llvm::BasicBlock* cond_block = llvm::BasicBlock::Create(context, "cond", parent);
-    llvm::BasicBlock* loop_block = llvm::BasicBlock::Create(context, "loop");
-    llvm::BasicBlock* end_block = llvm::BasicBlock::Create(context, "loopend");
+    llvm::BasicBlock *cond_block = llvm::BasicBlock::Create(context, "cond", parent);
+    llvm::BasicBlock *loop_block = llvm::BasicBlock::Create(context, "loop");
+    llvm::BasicBlock *end_block = llvm::BasicBlock::Create(context, "loopend");
 
     // Declare loop var
     stmt->loop_var->accept(this);
@@ -821,4 +827,27 @@ void IRGenerator::visit(ast::ForLoop* stmt) {
     }
 
     BLOCK_E("ForLoop")
+}
+
+void IRGenerator::visit(ast::RoutineCall *stmt) {
+    BLOCK_B("RoutineCall")
+
+    llvm::Function *routine = module->getFunction(stmt->routine->name);
+    if (!routine) {
+        GERROR("Routine " << stmt->routine->name << " is not declared")
+    }
+
+    if (routine->arg_size() != stmt->args.size()) {
+        GERROR("Arity mismatch. Expected: " << stmt->args.size() << ". Got: " << routine->arg_size())
+    }
+
+    std::vector<llvm::Value*> args;
+    for (auto& arg : stmt->args) {
+        arg->accept(this);
+        args.push_back(pop_v());
+    }
+
+    tmp_v = builder->CreateCall(routine, args);
+    
+    BLOCK_E("RoutineCall")
 }
