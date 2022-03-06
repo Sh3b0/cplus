@@ -7,7 +7,7 @@
   - [Primitive types](#Primitive-types)
   - [User types](#User-types)
 
-- [Output](#Output)
+- [Input/Output](#Input/Output)
 - [Comments](#Comments)
 
 - [Expressions](#Expressions)
@@ -122,49 +122,6 @@ var y is numbers[5];  # gets the last element of the array
 **Notes:**
 
 - Arrays in C+ are 1-indexed (First element is at index 1)
-
-
-
-## Output
-
-- The language has no input mechanism.
-- The **print** and **println** keywords are used to evaluate and print expressions to `stdout`.
-
-**Syntax:**
-
-- **print** <ins>Expression</ins>**;**
-- **print** "any string"**;**
-- **println** <ins>Expression</ins>**;**
-- **println** "any string"**;**
-
-**Semantics:**
-
-- **println** is the same as **print** but prints an empty line after it's output.
-- Only primitive types (**integer**, **real**, **boolean**) are printable.
-- Special characters and escapes inside strings have no special meaning.
-
-**Example:**
-
-**Code:**
-
-```python
-println true;
-
-var y is 5;
-
-print y;
-print " ";
-println y * 10;
-print "\n"\t";
-```
-
-**Console:**
-
-```
-1
-5 50
-\n"\t
-```
 
 
 
@@ -382,7 +339,7 @@ end
 
   - <ins>rval</ins> is a variable or literal of type <u>Type</u>
 
-- Program starts execution from the **main** routine which must have the following signature:
+- Program starts execution from the **main** routine.
 
   ```python
   routine main() : integer is
@@ -420,9 +377,9 @@ routine circle_area(radius: real) : real is
 	return PI * radius * radius;
 end
 
-routine main() : int is
+routine main(r : real) : int is
 	say_hi();
-	var area is circle_area(5.0);
+	var area is circle_area(r);
 	println power(2, 4) + area;
 	return 0;
 end
@@ -434,4 +391,49 @@ end
 Hello!
 94.539750
 ```
+
+
+
+## Input/Output
+
+- Input can be done through parameters to the main routine.
+- The **print** and **println** keywords are used to evaluate and print expressions to `stdout`.
+
+**Syntax:**
+
+- **print** <ins>Expression</ins>**;**
+- **print** "any string"**;**
+- **println** <ins>Expression</ins>**;**
+- **println** "any string"**;**
+
+**Semantics:**
+
+- **println** is the same as **print** but prints an empty line after it's output.
+- Only primitive types (**integer**, **real**, **boolean**) are printable.
+- Special characters and escapes inside strings have no special meaning.
+
+**Example:**
+
+**Code:**
+
+```python
+println true;
+
+var y is 5;
+
+print y;
+print " ";
+println y * 10;
+print "\n"\t";
+```
+
+**Console:**
+
+```
+1
+5 50
+\n"\t
+```
+
+
 

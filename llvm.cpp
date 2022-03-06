@@ -12,7 +12,7 @@
 #define BLOCK_B(X)                                           \
     if (shell.debug) {                                       \
         std::cout << CYAN;                                   \
-        for (int i=0; i<spaces; i++) {                        \
+        for (int i=0; i<spaces; i++) {                       \
             i % 4 ? std::cout << " " : std::cout << "|";     \
         }                                                    \
         std::cout << "<" << X << ">" << RESET << std::endl;  \
@@ -23,7 +23,7 @@
     if (shell.debug) {                                       \
         spaces -= 4;                                         \
         std::cout << CYAN;                                   \
-        for (int i=0; i<spaces; i++) {                        \
+        for (int i=0; i<spaces; i++) {                       \
             i % 4 ? std::cout << " " : std::cout << "|";     \
         }                                                    \
         std::cout << "</" << X << ">" << RESET << std::endl; \
@@ -107,7 +107,7 @@ void IRGenerator::visit(ast::VariableDeclaration *var) {
 
         // dtype is an array
         if (var->dtype->getType() == ast::TypeEnum::ARRAY) {
-            var->dtype->accept(this);       // array will be created by this visit,
+            var->dtype->accept(this);         // array will be created by this visit,
             ptrs_table[var->name] = pop_p();  // save a pointer to the array ptrs_table for later access.
             BLOCK_E("VariableDeclaration")
             return;
@@ -124,9 +124,7 @@ void IRGenerator::visit(ast::VariableDeclaration *var) {
         }
 
         // dtype is primitive
-        else if (var->dtype->getType() == ast::TypeEnum::INT  ||
-            var->dtype->getType() == ast::TypeEnum::REAL ||
-            var->dtype->getType() == ast::TypeEnum::BOOL) {
+        else if (var->dtype->getType() == ast::TypeEnum::PRIMITIVE) {
             if(var->iv) { // iv is given, deduce dtype 
                 goto deduce;
             }
@@ -232,6 +230,7 @@ void IRGenerator::visit(ast::Identifier *id) {
     }
     else if(args_table[id->name]) {
         tmp_v = args_table[id->name];
+        BLOCK_E("Identifier")
         return;
     }
     else if(ptrs_table[id->name]) {
@@ -431,6 +430,7 @@ void IRGenerator::visit(ast::ArrayType *at) {
     }
 
     if(signature_pass) {
+        BLOCK_E("ArrayType")
         return;
     }
     
@@ -453,6 +453,7 @@ void IRGenerator::visit(ast::RecordType *rt) {
     }
     
     if(signature_pass) {
+        BLOCK_E("RecordType")
         return;
     }
 
@@ -525,7 +526,6 @@ void IRGenerator::visit(ast::RoutineDeclaration *routine) {
     idx = 0;
     for (auto& arg : to_call->args()) {
         args_table[arg.getName()] = &arg;
-        // args_table[arg.getName()]->getType()->print(llvm::outs());
     }
 
     // Create globals needed for PrintStatement

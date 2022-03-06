@@ -7,4 +7,4 @@ cmake --build build
 # ./build/cplus -d examples/ex2.cp
 # ./build/cplus -d examples/ex3.cp
 
-./a.out
+# ./a.out

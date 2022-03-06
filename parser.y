@@ -30,10 +30,11 @@
 %type <bool> BOOL_VAL
 
 %type <ast::np<ast::VariableDeclaration>> VARIABLE_DECLARATION PARAMETER_DECLARATION
-%type <std::vector<ast::np<ast::VariableDeclaration>>> VARIABLE_DECLARATIONS PARAMETERS
+%type <std::vector<ast::np<ast::VariableDeclaration>>> VARIABLE_DECLARATIONS
+%type <std::vector<ast::np<ast::VariableDeclaration>>> PARAMETERS NON_EMPTY_PARAMETERS 
 %type <ast::np<ast::RoutineDeclaration>> ROUTINE_DECLARATION
 %type <ast::np<ast::Expression>> EXPRESSION
-%type <std::vector<ast::np<ast::Expression>>> EXPRESSIONS
+%type <std::vector<ast::np<ast::Expression>>> EXPRESSIONS NON_EMPTY_EXPRESSIONS
 %type <ast::np<ast::Type>> TYPE PRIMITIVE_TYPE ARRAY_TYPE RECORD_TYPE
 %type <ast::np<ast::Body>> BODY
 %type <ast::np<ast::Identifier>> MODIFIABLE_PRIMARY
@@ -88,14 +89,6 @@
 
 %%
 
-// Used for constructing comma separated items
-COMMA_SEPARATOR : COMMA | %empty
-;
-
-// Used for constructing semicolon separated items
-SEMICOLON_SEPARATOR : SEMICOLON | %empty
-;
-
 PROGRAM :
     %empty {
         PDEBUG("EOF")
@@ -136,7 +129,7 @@ MODIFIABLE_PRIMARY :
 ;
 
 EXPRESSION :
-    INT_VAL                         { $$ = std::make_shared<ast::IntLiteral>($1); }
+    INT_VAL                           { $$ = std::make_shared<ast::IntLiteral>($1); }
     | REAL_VAL                        { $$ = std::make_shared<ast::RealLiteral>($1); }
     | BOOL_VAL                        { $$ = std::make_shared<ast::BoolLiteral>($1); }
     | ROUTINE_CALL                    {
@@ -145,8 +138,8 @@ EXPRESSION :
     }
     | B_L EXPRESSION B_R              { $$ = $2; }
     | NOT EXPRESSION                  { $$ = std::make_shared<ast::UnaryExpression>(ast::OperatorEnum::NOT, $2); }
-    /* | MINUS EXPRESSION                { $$ = std::make_shared<ast::UnaryExpression>(ast::OperatorEnum::MINUS, $2); } */
-    | MODIFIABLE_PRIMARY                { $$ = $1; }
+    | MINUS EXPRESSION                { $$ = std::make_shared<ast::UnaryExpression>(ast::OperatorEnum::MINUS, $2); }
+    | MODIFIABLE_PRIMARY              { $$ = $1; }
     
     | EXPRESSION PLUS EXPRESSION      { $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::PLUS, $3); }
     | EXPRESSION MINUS EXPRESSION     { $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::MINUS, $3); } 
@@ -193,13 +186,12 @@ RECORD_TYPE : RECORD CB_L VARIABLE_DECLARATIONS CB_R END {
 ;
 
 VARIABLE_DECLARATIONS :
-    %empty {
-        std::vector<ast::np<ast::VariableDeclaration>> tmp;
-        $$ = tmp;
+    VARIABLE_DECLARATION {
+        $$ = std::vector<ast::np<ast::VariableDeclaration>>(1, $1);
     }
-    | VARIABLE_DECLARATION SEMICOLON_SEPARATOR VARIABLE_DECLARATIONS {
-        $3.push_back($1);
-        $$ = $3;
+    | VARIABLE_DECLARATION VARIABLE_DECLARATIONS {
+        $2.push_back($1);
+        $$ = $2;
     }
 ;
 
@@ -216,14 +208,23 @@ ROUTINE_DECLARATION :
     }
 ;
 
-PARAMETERS :
-    %empty {
-        std::vector<ast::np<ast::VariableDeclaration>> tmp;
-        $$ = tmp;
+
+NON_EMPTY_PARAMETERS :
+    PARAMETER_DECLARATION {
+        $$ = std::vector<ast::np<ast::VariableDeclaration>>(1, $1);
     }
-    | PARAMETER_DECLARATION COMMA_SEPARATOR PARAMETERS {
+    | PARAMETER_DECLARATION COMMA NON_EMPTY_PARAMETERS {
         $3.push_back($1);
         $$ = $3;
+    }
+;
+
+PARAMETERS :
+    %empty {
+        $$ = std::vector<ast::np<ast::VariableDeclaration>>();
+    }
+    | NON_EMPTY_PARAMETERS {
+        $$ = $1;
     }
 ;
 
@@ -359,16 +360,25 @@ ROUTINE_CALL :
             }
         }
     }
+; 
+
+NON_EMPTY_EXPRESSIONS :
+    EXPRESSION {
+        $$ = std::vector<ast::np<ast::Expression>>(1, $1);
+    }
+    | EXPRESSION COMMA NON_EMPTY_EXPRESSIONS {
+        $3.push_back($1);
+        $$ = $3;
+    }
 ;
+
 
 EXPRESSIONS :
     %empty {
-        std::vector<ast::np<ast::Expression>> tmp;
-        $$ = tmp;
+        $$ = std::vector<ast::np<ast::Expression>>();
     }
-    | EXPRESSION COMMA_SEPARATOR EXPRESSIONS {
-        $3.push_back($1);
-        $$ = $3;
+    | NON_EMPTY_EXPRESSIONS {
+        $$ = $1;
     }
 ;
 

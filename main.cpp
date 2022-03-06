@@ -30,7 +30,7 @@ int main(int argc, char **argv) {
         return 1;
     }
     
-    if(shell.debug){
+    if(shell.debug) {
         std::cout << CYAN << "[AST]:" << RESET << std::endl;
     }
 
