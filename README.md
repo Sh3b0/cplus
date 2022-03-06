@@ -1,64 +1,119 @@
+[![made-with-C++](https://img.shields.io/badge/Made%20with-C++-F3527D.svg)](https://www.javascript.com)
+[![GitHub issues](https://img.shields.io/github/issues/sh3b0/cplus)](https://gitHub.com/sh3bo/pft/issues/)
+[![GitHub pull-requests](https://img.shields.io/github/issues-pr/sh3b0/cplus)](https://gitHub.com/sh3b0/cplus/pulls/)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](https://github.com/Sh3b0/pft/blob/main/LICENSE)
+
 # Сplus
-Compiler for a toy imperative language
 
-## Getting Started
-Prerequisites:
+Compiler for **C+** toy imperative language, based on [LLVM](https://llvm.org/docs/LangRef.html).
 
-* CMake (3.0+)
-* Flex and Bison tools
-* C++ compiler
+- For language syntax, semantics, and examples check [documentation.md](./docs/documentation.md)
+- For formal language grammar, check [grammar.md](./docs/grammar.md)
 
-### Quick Start: Windows Platform
 
-1. Install [CMake](https://cmake.org/)
-    * You can check installation by typing `cmake --version` in terminal.
-2. Install any compatible C++ compiler suite (like [Visual Studio](https://visualstudio.microsoft.com/) or [MinGW](https://www.mingw-w64.org/) or [Clang](https://clang.llvm.org/))
-    * By default, CMake will discover your available compiler tools. To check available generators type `cmake --help` and look for last section about Generators.
-    * The default generator will be highlighted and used by CMake. If you want to change it add `-G <generator_name>` flag on configuration/generation stage.
-3. Install [Flex and Bison](https://github.com/lexxmark/winflexbison/releases) for Windows
-    * Extract the contents of the archive like during the normal installation (e. g. into `C:\Program Files\Flex Bison\`)
-    * Add the folder where you put your Flex/Bison to the path ([guide](https://stackoverflow.com/questions/44272416/how-to-add-a-folder-to-path-environment-variable-in-windows-10-with-screensho))
-    * Start/Restart your terminal anywhere and type `win_bison.exe`. If Bison tool starts and asks for operands you did everything right. CMake will automatically discover Flex/Bison.
 
-4. Now you can proceed to the [configuration stage](#config-and-building)
+## Getting started
 
----
-### Quick Start: Unix Platform
+- Code `sample.cp`
 
-1. Install CMake using package manager (e. g. `sudo apt-get -y install cmake`)
-2. Install C++ compiler (GCC or Clang) using package manager
-3. The same way install Flex and Bison
-4. Check your installation: `cmake`, `g++`, `flex` and `bison` tools must be discoverable in your shell.
-5. Now you can proceed to the [configuration stage](#config-and-building)
+  ```python
+  routine main() : integer is
+  	println "Hello C+";
+  	return 0;
+  end
+  ```
 
----
-### Config and Building
+- Compile
 
-1. Open your terminal and navigate to repository
-2. Create build folder (e. g. `mkdir <build_folder>`)
-3. Run CMake Configuration with `cmake -S . -B <build_folder>`
-4. Project files are generated into build folder. To build the project:
-    * You open them if this a IDE project file or buld them manually if this is a makefile.
-    * You run command `cmake --build <build_folder>`
+  ```bash
+  $ ./cplus -d sample.cp
+  
+  Compilation successful. Run ./a.out to execute
+  ```
 
-Example for Windows:
-```ps
-cd "C:\Cplus"
-mkdir Build
-cmake -S . -B Build
-cmake --build Build
-```
-Example for Unix:
-```bash
-cd cplus
-mkdir build
-cmake -S . -B build
-cmake --build build
-```
+- Run
 
-Additional flags you can specify on configuration/generation stage:
-* `-A x64` to specify "x64" architecture
-* `-G "Visual Studio 17 2022 Win64"` to choose VS22 generator
+  ```bash
+  $ ./a.out
+  Hello C+
+  ```
 
-Additional flags for build stage:
-* `--config Release` to set "Release" configuration. Configuration must one of {Debug|Release|RelWithDebInfo,MinSizeRel}.
+- Generated `ir.ll`
+
+  ```assembly
+  ; ModuleID = 'ir.ll'
+  source_filename = "ir.ll"
+  target triple = "x86_64-pc-linux-gnu"
+  
+  @fmt_s_ln = private unnamed_addr constant [4 x i8] c"%s\0A\00", align 1
+  @str = private unnamed_addr constant [9 x i8] c"Hello C+\00", align 1
+  
+  define i64 @main() {
+  entry:
+    %printfCall = call i64 (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @fmt_s_ln, i32 0, i32 0), i8* getelementptr inbounds ([9 x i8], [9 x i8]* @str, i32 0, i32 0))
+    ret i64 0
+  }
+  
+  declare i64 @printf(i8*, ...)
+  ```
+
+  
+
+- Debug output from `cplus -d sample.cp`
+
+  ![debug](./docs/debug.png)
+
+  
+
+## Compilation from source (Linux)
+
+1. Install prerequisites: `cmake flex bison clang llvm` using the package manager for your distro.
+
+   - Example: `sudo apt install cmake flex bison clang llvm`
+
+2. Clone repo
+
+   ```bash
+   git clone https://github.com/Sh3B0/cplus/
+   cd cplus
+   ```
+
+3. Build `cplus` binary using CMake
+
+   ```bash
+   mkdir build
+   cmake -S . -B build
+   cmake --build build
+   ```
+
+4. Compile a source file `*.cp` (check [examples](./examples))
+
+   ```bash
+   cd build
+   ./cplus -d ../examples/ex1.cp
+   ```
+
+5. Help
+
+   ```bash
+   $ ./cplus --help
+   usage: cplus [options] infile
+   	infile			        path to the source code file (*.cp) to compile.
+   
+   options:
+   	-h, --help		        show this help message and exit.
+   	-d, --debug		        show debug messages.
+   	-o, --outfile outfile	specify executable file name.
+   ```
+
+   
+
+## Contribution
+
+Feel free to report a bug or suggest a feature by creating an issue.
+
+
+
+## License
+
+The source code is licensed under the MIT license, which you can find in the [LICENSE](./LICENSE) file.
