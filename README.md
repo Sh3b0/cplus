@@ -1,5 +1,5 @@
 [![made-with-C++](https://img.shields.io/badge/Made%20with-C++-F3527D.svg)](https://www.javascript.com)
-[![GitHub issues](https://img.shields.io/github/issues/sh3b0/cplus)](https://gitHub.com/sh3bo/pft/issues/)
+[![GitHub issues](https://img.shields.io/github/issues/sh3b0/cplus)](https://gitHub.com/sh3b0/pft/issues/)
 [![GitHub pull-requests](https://img.shields.io/github/issues-pr/sh3b0/cplus)](https://gitHub.com/sh3b0/cplus/pulls/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](https://github.com/Sh3b0/pft/blob/main/LICENSE)
 
