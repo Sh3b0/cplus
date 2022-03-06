@@ -5,41 +5,46 @@
 %define api.value.type variant
 %define api.token.constructor
 %define parse.assert
-
 %define api.parser.class { parser }
-%define api.namespace { cplus }
+%define api.namespace    { cplus }
 
-%lex-param { cplus::lexer &lexer }
-%lex-param { cplus::shell &shell }
+%lex-param   { cplus::lexer &lexer }
+%lex-param   { cplus::shell &shell }
 %parse-param { cplus::lexer &lexer }
 %parse-param { cplus::shell &shell }
 
 %token VAR ID IS INT_VAL REAL_VAL BOOL_VAL    // var <identifier> is \d+ \d+\.\d+ true|false
-%token TYPE INT_KW REAL_KW BOOLEAN_KW         // type integer real boolean
+%token TYPE_KW INT_KW REAL_KW BOOL_KW         // type integer real boolean
 %token B_L B_R SB_L SB_R CB_L CB_R            // ( ) [ ] { }
-%token COLON SEMICOLON COMMA DOT DDOT BECOMES // : ; , . .. :=
+%token COLON SEMICOLON COMMA DDOT BECOMES     // : ; , . .. :=
 %token PLUS MINUS MUL DIV MOD                 // + - * / %
 %token AND OR XOR NOT                         // and or xor not
 %token LT GT EQ LEQ GEQ NEQ                   // < > = <= >= /=
 %token ARRAY RECORD ROUTINE RETURN END        // array record routine return end
-%token PRINT                                  // print
+%token PRINT PRINTLN STRING                   // print println <string>
 %token IF THEN ELSE WHILE FOR IN LOOP REVERSE // if then else while for in loop reverse
 
-%type <std::string> ID
-
-// TODO: make them literals
-%type <int> INT_VAL
-%type <ast::np<ast::Literal>> INT_EXP
+%type <std::string> ID STRING
+%type <long long> INT_VAL
 %type <double> REAL_VAL
-%type <ast::np<ast::Literal>> REAL_EXP
 %type <bool> BOOL_VAL
-%type <ast::np<ast::Literal>> BOOL_EXP
 
-%type <ast::np<ast::Variable> > VariableDeclaration ModifiablePrimary ParameterDeclaration
-%type <std::map<std::string, ast::np<ast::Variable> > > VariableDeclarations Parameters
-%type <ast::np<ast::ExpressionNode> > Expression
-%type <ast::np<ast::TypeNode> > Type PrimitiveType UserType ArrayType RecordType TypeDeclaration
-%type <ast::np<ast::Literal>> ModifiablePrimaryEq
+%type <ast::np<ast::VariableDeclaration>> VARIABLE_DECLARATION PARAMETER_DECLARATION
+%type <std::vector<ast::np<ast::VariableDeclaration>>> VARIABLE_DECLARATIONS PARAMETERS
+%type <ast::np<ast::RoutineDeclaration>> ROUTINE_DECLARATION
+%type <ast::np<ast::Expression>> EXPRESSION
+%type <std::vector<ast::np<ast::Expression>>> EXPRESSIONS
+%type <ast::np<ast::Type>> TYPE PRIMITIVE_TYPE ARRAY_TYPE RECORD_TYPE
+%type <ast::np<ast::Body>> BODY
+%type <ast::np<ast::Identifier>> MODIFIABLE_PRIMARY
+%type <ast::np<ast::Statement>> STATEMENT
+%type <ast::np<ast::ReturnStatement>> RETURN_STATEMENT
+%type <ast::np<ast::PrintStatement>> PRINT_STATEMENT
+%type <ast::np<ast::AssignmentStatement>> ASSIGNMENT_STATEMENT
+%type <ast::np<ast::IfStatement>> IF_STATEMENT
+%type <ast::np<ast::WhileLoop>> WHILE_LOOP
+%type <ast::np<ast::ForLoop>> FOR_LOOP
+%type <ast::np<ast::RoutineCall>> ROUTINE_CALL
 
 %left COMMA
 %right BECOMES
@@ -50,438 +55,324 @@
 %left PLUS MINUS
 %left MUL DIV MOD
 %right NOT
-%left DOT
 
-%start Program
+%start PROGRAM
 
-%code requires
-{
+%code requires {
     #include <iostream>
     #include <string>
+    #include <vector>
     #include "ast.hpp"
 
-    using namespace std;
-
-    namespace cplus
-    {
-        class lexer;
-        class shell;
+    namespace cplus {
+    class lexer;
+    class shell;
     }
 }
 
-%code top
-{
+%code top {
     #include "lexer.h"
-    #include "parser.hpp"
     #include "shell.hpp"
+
+    #define RESET   "\033[0m"
+    #define GREEN   "\033[32m"
+    #define PDEBUG(X) if (shell.debug) std::cout << GREEN << "(" << X << ") " << RESET;
+
     static cplus::parser::symbol_type yylex(cplus::lexer &lexer, cplus::shell &shell) {
         return lexer.get_next_token();
     }
     
-    using namespace cplus;
-    using namespace ast;
-    
-    np<Program> program = make_shared<Program>();  // Points to the whole program node.
+    ast::np<ast::Program> program = std::make_shared<ast::Program>();  // Points to the whole program node.
 }
 
 
 %%
-
-// Used for constructing semicolon separated items
-SemicolonSeparator : SEMICOLON | %empty
-;
 
 // Used for constructing comma separated items
-CommaSeparator : COMMA | %empty
+COMMA_SEPARATOR : COMMA | %empty
 ;
 
-Program:
-    %empty { if (shell.pdebug) cout << "[PARSER]: EOF\n"; }
-    | SimpleDeclaration SemicolonSeparator Program
-    | RoutineDeclaration SemicolonSeparator Program
-    | Statement SemicolonSeparator Program
+// Used for constructing semicolon separated items
+SEMICOLON_SEPARATOR : SEMICOLON | %empty
 ;
 
-SimpleDeclaration:
-    VariableDeclaration {
-        if(shell.pdebug) cout << "[PARSER]: " << *$1 << '\n';
-        program->variables[$1->name] = $1;
-        shell.prompt();
-    }
-    | TypeDeclaration {
-        shell.prompt();
-    }
-;
-
-VariableDeclaration:
-    VAR ID IS Expression SEMICOLON {
-        auto exp = $4;
-        $$ = make_shared<Variable> (exp->dtype, $2, exp->value);
-    }
-
-    | VAR ID COLON Type SEMICOLON {
-        $$ = make_shared<Variable> ($4, $2, make_shared<Literal>());
-    }
-
-    | VAR ID COLON Type IS Expression SEMICOLON {
-        auto exp = $6;
-        $$ = make_shared<Variable> (exp->dtype, $2, exp->value);
-    }
-;
-
-// TODO: Why do we need ExpressionNode again? It seems to do the same job as Literal
-// TODO: Expression can contain a RoutineCall
-// Also, why literal constructor need the dtype
-Expression :
-    INT_EXP {
-        auto type = make_shared<TypeNode>(make_shared<Primitive>(ast::INTEGER));
-        $$ = make_shared<ExpressionNode>(type, $1);
-    }
-    | BOOL_EXP {
-        auto type = make_shared<TypeNode>(make_shared<Primitive>(ast::BOOLEAN));
-        $$ = make_shared<ExpressionNode>(type, $1);
-    }
-    | REAL_EXP {
-        auto type = make_shared<TypeNode>(make_shared<Primitive>(ast::REAL));
-        $$ = make_shared<ExpressionNode>(type, $1);
-    }
-    | ModifiablePrimaryEq {
-        $$ = make_shared<ExpressionNode>($1->dtype, $1);
-    }
-;
-
-// Simplifies to a Literal
-ModifiablePrimaryEq :
-    ModifiablePrimary {
-        auto var = $1;
-        $$ = var->value;
-    }
-    | ModifiablePrimary PLUS Expression     { 
-        auto var = $1->value;
-        $$ = var->add($3->value);
-    }
-    | ModifiablePrimary MINUS Expression    { 
-        auto var = $1->value;
-        $$ = var->sub($3->value);
-    }
-    | ModifiablePrimary MUL Expression      { 
-        auto var = $1->value;
-        $$ = var->mul($3->value);
-    }
-    | ModifiablePrimary DIV Expression      { 
-        auto var = $1->value;
-        $$ = var->div($3->value);
-    }
-    | ModifiablePrimary MOD Expression      { 
-        auto var = $1->value;
-        $$ = var->mod($3->value);
-    }
-    
-    /*| Expression PLUS ModifiablePrimary     { 
-        auto var = $1->value;
-        $$ = var->add($3->value);
-    }
-    | Expression MINUS ModifiablePrimary    { 
-        auto var = $1->value;
-        $$ = var->sub($3->value);
-    }
-    | Expression MUL ModifiablePrimary      { 
-        auto var = $1->value;
-        $$ = var->mul($3->value);
-    }
-    | Expression DIV ModifiablePrimary      { 
-        auto var = $1->value;
-        $$ = var->div($3->value);
-    }
-    | Expression MOD ModifiablePrimary      { 
-        auto var = $1->value;
-        $$ = var->mod($3->value);
-    }*/
-    
-    // TODO: Add more rules for MINUS, MUL, DIV, MOD, EQ, NEQ, LT, GT, LEQ, GEQ, AND, OR, XOR, NOT 
-
-// TODO: implement the same functionality in a shorter/smarter way
-INT_EXP: INT_VAL{ 
-        auto type = make_shared<TypeNode>(make_shared<Primitive>(ast::INTEGER));
-        $$ = make_shared<Literal>(type, $1); 
-    }
-    | B_L INT_EXP B_R         { $$ = $2; }
-    | INT_EXP PLUS INT_EXP    { 
-        auto var = $1;
-        $$ = var->add($3);
-    }
-    | INT_EXP MINUS INT_EXP   { 
-        auto var = $1;
-        $$ = var->sub($3);
-    }
-    | INT_EXP MUL INT_EXP     { 
-        auto var = $1;
-        $$ = var->mul($3);
-    }
-    | INT_EXP MOD INT_EXP     { 
-        auto var = $1;
-        $$ = var->mod($3);
-    }
-;
-
-REAL_EXP: REAL_VAL  { 
-        auto type = make_shared<TypeNode>(make_shared<Primitive>(ast::REAL));
-        $$ = make_shared<Literal>(type, $1); 
-    }
-    | B_L REAL_EXP B_R           { $$ = $2; }
-    
-    | Expression PLUS Expression     { 
-        auto var = $1->value;
-        $$ = var->add($3->value);
-    }
-    | Expression MINUS Expression    { 
-        auto var = $1->value;
-        $$ = var->sub($3->value);
-    }
-    | Expression MUL Expression      { 
-        auto var = $1->value;
-        $$ = var->mul($3->value);
-    }
-    | Expression DIV Expression      { 
-        auto var = $1->value;
-        $$ = var->div($3->value);
-    }
-;
-
-BOOL_EXP : BOOL_VAL {
-        auto type = make_shared<TypeNode>(make_shared<Primitive>(ast::BOOLEAN));
-        $$ = make_shared<Literal>(type, $1); 
-    }
-    | B_L BOOL_EXP B_R       { $$ = $2; }
-    
-    // bool bool
-    | BOOL_EXP AND BOOL_EXP  { 
-        auto var = $1;
-        $$ = var->andOp($3);
-    }
-    | BOOL_EXP OR BOOL_EXP   { 
-        auto var = $1;
-        $$ = var->orOp($3);
-    }
-    | BOOL_EXP XOR BOOL_EXP  { 
-        auto var = $1;
-        $$ = var->xorOp($3);
-    }
-    | NOT BOOL_EXP           { 
-        auto var = $2;
-        $$ = var->notOp();
-    }
-
-    | Expression LT Expression     { 
-        auto var = $1->value;
-        $$ = var->lt($3->value);
-    }
-    | Expression LEQ Expression    { 
-        auto var = $1->value;
-        $$ = var->leq($3->value);
-    }
-    | Expression GT Expression     { 
-        auto var = $1->value;
-        $$ = var->gt($3->value);
-    }
-    | Expression GEQ Expression    { 
-        auto var = $1->value;
-        $$ = var->geq($3->value);
-    }
-    | Expression EQ Expression     { 
-        auto var = $1->value;
-        $$ = var->eq($3->value);
-    }
-    | Expression NEQ Expression    { 
-        auto var = $1->value;
-        $$ = var->neq($3->value);
-    }
-;
-
-
-TypeDeclaration : TYPE ID IS Type SEMICOLON {
-    if (shell.pdebug) {
-        cout << "[PARSER]: alias " << $2 << " for type " << *$4 << '\n';
-    }
-    program->types[$2] = $4;
-}
-;
-
-Type : PrimitiveType | UserType | ID {
-    $$ = program->types[$1];
-}
-;
-
-PrimitiveType :
-    INT_KW {
-        $$ = make_shared<TypeNode>(make_shared<Primitive>(ast::INTEGER));
-    }
-    | REAL_KW {
-        $$ = make_shared<TypeNode>(make_shared<Primitive>(ast::REAL));
-    }
-    | BOOLEAN_KW {
-        $$ = make_shared<TypeNode>(make_shared<Primitive>(ast::BOOLEAN));
-    }
-;
-
-UserType : ArrayType | RecordType
-;
-
-ArrayType : ARRAY SB_L INT_EXP SB_R Type {
-    $$ = make_shared<TypeNode>(make_shared<Array>(get<int>($3->value), $5));
-}
-;
-
-RecordType : RECORD CB_L VariableDeclarations CB_R END {
-    $$ = make_shared<TypeNode>(make_shared<Record>($3));
-}
-;
-
-VariableDeclarations:
+PROGRAM :
     %empty {
-        map< string, np<Variable> > tmp;
-        $$ = tmp;
+        PDEBUG("EOF")
+        std::cout << '\n' << std::endl;
     }
-    | VariableDeclaration SemicolonSeparator VariableDeclarations {
-        auto vars = $3;
-        auto var = $1;
-        vars[var->name] = var;
-        $$ = vars;
+    | VARIABLE_DECLARATION PROGRAM {
+        program->variables.push_back($1);
+    }
+    | ROUTINE_DECLARATION PROGRAM
+    | GLOBAL_TYPE_DECLARATION PROGRAM
+;
+
+VARIABLE_DECLARATION :
+    VAR ID IS EXPRESSION SEMICOLON {
+        PDEBUG("VARIABLE_DECLARATION_W/O_TYPE")
+        $$ = std::make_shared<ast::VariableDeclaration> ($2, $4);
+    }
+    | VAR ID COLON TYPE SEMICOLON {
+        PDEBUG("VARIABLE_DECLARATION_W/O_IV")
+        $$ = std::make_shared<ast::VariableDeclaration> ($2, $4);
+    }
+    | VAR ID COLON TYPE IS EXPRESSION SEMICOLON {
+        PDEBUG("VARIABLE_DECLARATION")
+        $$ = std::make_shared<ast::VariableDeclaration> ($2, $4, $6);
     }
 ;
 
-// TODO: detecting rtype in the first case?
-RoutineDeclaration :
-    ROUTINE ID B_L Parameters B_R IS Body END {
-        if (shell.pdebug) cout << "[PARSER]: routine " << $2 << " is declared\n";
-        program->routines[$2] = make_shared<Routine>($2, $4, make_shared<TypeNode>());
-        shell.prompt();
-    }
-    | ROUTINE ID B_L Parameters B_R COLON Type IS Body END {
-        if (shell.pdebug) cout << "[PARSER]: routine " << $2 << " is declared\n";
-        program->routines[$2] = make_shared<Routine>($2, $4, $7);
-        shell.prompt();
+GLOBAL_TYPE_DECLARATION :
+    TYPE_KW ID IS TYPE SEMICOLON {
+        PDEBUG("GLOBAL_TYPE_DECLARATION")
+        program->types[$2] = $4;
     }
 ;
 
-Parameters :
-    %empty {
-        map< string, np<Variable> > tmp;
-        $$ = tmp;
-    }
-    | ParameterDeclaration CommaSeparator Parameters {
-        auto vars = $3;
-        auto var = $1;
-        vars[var->name] = var;
-        $$ = vars;
-    }
+MODIFIABLE_PRIMARY :
+    ID                                { $$ = std::make_shared<ast::Identifier>($1); }
+    | ID SB_L EXPRESSION SB_R         { $$ = std::make_shared<ast::Identifier>($1, $3); }
 ;
 
-ParameterDeclaration :
-    ID COLON Type {
-        $$ = make_shared<Variable>($3, $1, make_shared<Literal>());
+EXPRESSION :
+    INT_VAL                         { $$ = std::make_shared<ast::IntLiteral>($1); }
+    | REAL_VAL                        { $$ = std::make_shared<ast::RealLiteral>($1); }
+    | BOOL_VAL                        { $$ = std::make_shared<ast::BoolLiteral>($1); }
+    | ROUTINE_CALL                    {
+        PDEBUG("ROUTINE_CALL_EXP")
+        $$ = $1;    
     }
+    | B_L EXPRESSION B_R              { $$ = $2; }
+    | NOT EXPRESSION                  { $$ = std::make_shared<ast::UnaryExpression>(ast::OperatorEnum::NOT, $2); }
+    /* | MINUS EXPRESSION                { $$ = std::make_shared<ast::UnaryExpression>(ast::OperatorEnum::MINUS, $2); } */
+    | MODIFIABLE_PRIMARY                { $$ = $1; }
+    
+    | EXPRESSION PLUS EXPRESSION      { $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::PLUS, $3); }
+    | EXPRESSION MINUS EXPRESSION     { $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::MINUS, $3); } 
+    | EXPRESSION MUL EXPRESSION       { $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::MUL, $3); } 
+    | EXPRESSION DIV EXPRESSION       { $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::DIV, $3); }
+    | EXPRESSION MOD EXPRESSION       { $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::MOD, $3); }
+    | EXPRESSION AND EXPRESSION       { $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::AND, $3); }
+    | EXPRESSION OR EXPRESSION        { $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::OR, $3); }
+    | EXPRESSION XOR EXPRESSION       { $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::XOR, $3); }
+    | EXPRESSION EQ EXPRESSION        { $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::EQ, $3); } 
+    | EXPRESSION NEQ EXPRESSION       { $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::NEQ, $3); } 
+    | EXPRESSION LT EXPRESSION        { $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::LT, $3); } 
+    | EXPRESSION GT EXPRESSION        { $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::GT, $3); } 
+    | EXPRESSION LEQ EXPRESSION       { $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::LEQ, $3); } 
+    | EXPRESSION GEQ EXPRESSION       { $$ = std::make_shared<ast::BinaryExpression>($1, ast::OperatorEnum::GEQ, $3); } 
 ;
 
-Body : %empty
-    | SimpleDeclaration SemicolonSeparator Body
-    | Statement SemicolonSeparator Body
-;
-
-Statement : Assignment | RoutineCall | WhileLoop | ForLoop | IfStatement | ReturnStatement | PrintStatement
-;
-
-Assignment : ModifiablePrimary BECOMES Expression SEMICOLON {
-    if (shell.pdebug) cout << "[PARSER]: Assignment statement parsed\n";
-    auto var = $1;
-    auto exp = $3;
-    var->value = exp->value;
-    shell.prompt();
-}
-;
-
-// Represents a variable name, an array element, or a record field
-ModifiablePrimary :
-    ID DOT ID {
-        // TODO: SemanticAnalyezer possible errors
-        // - $1 is not defined
-        // - $1 is not a record
-        // - $3 is not an element of $1
-        $$ = get<np<Record>>(program->types[$1]->dtype)->variables[$3];
-    }
-
-    | ID SB_L INT_EXP SB_R {
-        // TODO: SemanticAnalyzer possible errors
-        // - $1 is not subscriptable
-        // - Array index out of range
-        $$ = get<np<Array>>(program->types[$1]->dtype)->data[get<int>($3->value)-1];
-    }
-
+TYPE :
+    PRIMITIVE_TYPE
+    | ARRAY_TYPE
+    | RECORD_TYPE
     | ID {
-        // TODO: SemanticAnalyezer possible errors: $1 is not defined.
-        $$ = program->variables[$1];
+        PDEBUG("ALIASED_TYPE_ACCESS")
+        $$ = program->types[$1];
     }
+;
 
-RoutineCall : ID B_L Expressions B_R SEMICOLON {
-    if (shell.pdebug) cout << "[PARSER]: routine call for " << $1 << " parsed\n";
-    // TODO SemanticAnalyezer possible errors:
-    // - $1 is not callable
-    // - Argument type mismatch
-    // - Arity mismatch
+PRIMITIVE_TYPE :
+    INT_KW    { $$ = std::make_shared<ast::IntType>(); }
+    | REAL_KW { $$ = std::make_shared<ast::RealType>(); }
+    | BOOL_KW { $$ = std::make_shared<ast::BoolType>(); }
+;
+
+ARRAY_TYPE : ARRAY SB_L EXPRESSION SB_R TYPE {
+    PDEBUG("ARRAY_TYPE")
+    $$ = std::make_shared<ast::ArrayType>($3, $5);
 }
 ;
 
-Expressions :
-    %empty | Expression CommaSeparator Expressions
-;
-
-IfStatement :
-    IF Expression THEN Body END {
-        if (shell.pdebug) cout << "[PARSER]: if statement parsed\n";
-    }
-    | IF Expression THEN Body ELSE Body END {
-        if (shell.pdebug) cout << "[PARSER]: if-else statement parsed\n";
-    }
-;
-
-ReturnStatement :
-    RETURN Expression SEMICOLON {
-        if (shell.pdebug) cout << "[PARSER]: return statement parsed\n";
-    }
-;
-
-// TODO: Generalize to PRINT Expression
-PrintStatement :
-    PRINT ModifiablePrimary SEMICOLON {
-        if (shell.pdebug) cout << "[PARSER]: print " << *$2 << "\n";
-        cout << *($2->value) << '\n';
-        shell.prompt();
-    }
-    | PRINT RoutineCall SEMICOLON
-;
-
-
-WhileLoop : WHILE Expression LOOP Body END {
-    if (shell.pdebug) cout << "[PARSER]: while loop parsed\n";
+RECORD_TYPE : RECORD CB_L VARIABLE_DECLARATIONS CB_R END {
+    PDEBUG("RECORD_TYPE")
+    $$ = std::make_shared<ast::RecordType>($3);
 }
 ;
 
-ForLoop :
-    FOR ID IN Range LOOP Body END {
-        if (shell.pdebug) cout << "[PARSER]: for loop parsed\n";
-        
+VARIABLE_DECLARATIONS :
+    %empty {
+        std::vector<ast::np<ast::VariableDeclaration>> tmp;
+        $$ = tmp;
     }
-    | FOR ID IN REVERSE Range LOOP Body END {
-        if (shell.pdebug) cout << "[PARSER]: reverse for loop parsed\n";
+    | VARIABLE_DECLARATION SEMICOLON_SEPARATOR VARIABLE_DECLARATIONS {
+        $3.push_back($1);
+        $$ = $3;
     }
 ;
 
-Range :
-    Expression DDOT Expression
+ROUTINE_DECLARATION :
+    ROUTINE ID B_L PARAMETERS B_R IS BODY END {
+        PDEBUG("PROCEDURE_DECLARATION")
+        $$ = std::make_shared<ast::RoutineDeclaration>($2, $4, $7);
+        program->routines.push_back($$);
+    }
+    | ROUTINE ID B_L PARAMETERS B_R COLON TYPE IS BODY END {
+        PDEBUG("FUNCTION_DECLARATION")
+        $$ = std::make_shared<ast::RoutineDeclaration>($2, $4, $9, $7);
+        program->routines.push_back($$);
+    }
+;
+
+PARAMETERS :
+    %empty {
+        std::vector<ast::np<ast::VariableDeclaration>> tmp;
+        $$ = tmp;
+    }
+    | PARAMETER_DECLARATION COMMA_SEPARATOR PARAMETERS {
+        $3.push_back($1);
+        $$ = $3;
+    }
+;
+
+PARAMETER_DECLARATION :
+    ID COLON TYPE {
+        PDEBUG("PARAMETER_DECLARATION")
+        $$ = std::make_shared<ast::VariableDeclaration>($1, $3);
+    }
+;
+
+BODY :
+    %empty {
+        std::vector<ast::np<ast::VariableDeclaration>> tmp1;
+        std::vector<ast::np<ast::Statement>> tmp2;
+        $$ = std::make_shared<ast::Body>(tmp1, tmp2);
+    }
+    | VARIABLE_DECLARATION BODY {
+        $2->variables.push_back($1);
+        $$ = $2;
+    }
+    | STATEMENT BODY {
+        $2->statements.push_back($1);
+        $$ = $2;
+    }
+;
+
+STATEMENT :
+    RETURN_STATEMENT         { $$ = $1; }
+    | PRINT_STATEMENT        { $$ = $1; }
+    | ASSIGNMENT_STATEMENT   { $$ = $1; }
+    | IF_STATEMENT           { $$ = $1; }
+    | WHILE_LOOP             { $$ = $1; }
+    | FOR_LOOP               { $$ = $1; }
+    | ROUTINE_CALL SEMICOLON {
+        PDEBUG("ROUTINE_CALL_STMT")
+        $$ = $1;
+    }
+;
+
+RETURN_STATEMENT :
+    RETURN EXPRESSION SEMICOLON {
+        PDEBUG("RETURN_EXP_STATEMENT")
+        $$ = std::make_shared<ast::ReturnStatement>($2);
+    }
+    | RETURN SEMICOLON {
+        PDEBUG("RETURN_STATEMENT")
+        $$ = std::make_shared<ast::ReturnStatement>();
+    }
+;
+
+PRINT_STATEMENT :
+    PRINT EXPRESSION SEMICOLON {
+        PDEBUG("PRINT_EXP_STATEMENT")
+        $$ = std::make_shared<ast::PrintStatement>($2);
+    }
+    | PRINT STRING SEMICOLON {
+        PDEBUG("PRINT_STR_STATEMENT")
+        $2 = $2.substr(1, $2.size()-2);
+        $$ = std::make_shared<ast::PrintStatement>(std::make_shared<std::string>($2));
+    }
+    | PRINTLN EXPRESSION SEMICOLON {
+        PDEBUG("PRINTLN_EXP_STATEMENT")
+        $$ = std::make_shared<ast::PrintStatement>($2, true);
+    }
+    | PRINTLN STRING SEMICOLON {
+        PDEBUG("PRINTLN_STR_STATEMENT")
+        $2 = $2.substr(1, $2.size()-2);
+        $$ = std::make_shared<ast::PrintStatement>(std::make_shared<std::string>($2), true);
+    }
+;
+
+ASSIGNMENT_STATEMENT :
+    MODIFIABLE_PRIMARY BECOMES EXPRESSION SEMICOLON {
+        PDEBUG("ASSIGNMENT_STATEMENT")
+        $$ = std::make_shared<ast::AssignmentStatement>($1, $3);
+    }
+;
+
+IF_STATEMENT :
+    IF EXPRESSION THEN BODY END {
+        PDEBUG("IF_STATEMENT")
+        $$ = std::make_shared<ast::IfStatement>($2, $4);
+    }
+    | IF EXPRESSION THEN BODY ELSE BODY END {
+        PDEBUG("IF_ELSE_STATEMENT")
+        $$ = std::make_shared<ast::IfStatement>($2, $4, $6);
+    }
+;
+
+WHILE_LOOP :
+    WHILE EXPRESSION LOOP BODY END {
+        PDEBUG("WHILE_LOOP")
+        $$ = std::make_shared<ast::WhileLoop>($2, $4);
+    }
+;
+
+FOR_LOOP :
+    FOR ID IN EXPRESSION DDOT EXPRESSION LOOP BODY END {
+        PDEBUG("FOR_LOOP")
+
+        auto loop_var = std::make_shared<ast::VariableDeclaration>($2, $4);
+        auto id = std::make_shared<ast::Identifier>($2);
+        auto one = std::make_shared<ast::IntLiteral>(1);
+        auto idp1 = std::make_shared<ast::BinaryExpression>(id, ast::OperatorEnum::PLUS, one);
+        auto cond = std::make_shared<ast::BinaryExpression>(id, ast::OperatorEnum::LEQ, $6);
+        auto body = $8;
+        auto action = std::make_shared<ast::AssignmentStatement>(id, idp1);
+
+        $$ = std::make_shared<ast::ForLoop>(loop_var, cond, body, action);
+    }
+    | FOR ID IN REVERSE EXPRESSION DDOT EXPRESSION LOOP BODY END {
+        PDEBUG("FOR_REVERSE_LOOP")
+
+        auto loop_var = std::make_shared<ast::VariableDeclaration>($2, $7);
+        auto id = std::make_shared<ast::Identifier>($2);
+        auto one = std::make_shared<ast::IntLiteral>(1);
+        auto idm1 = std::make_shared<ast::BinaryExpression>(id, ast::OperatorEnum::MINUS, one);
+        auto cond = std::make_shared<ast::BinaryExpression>(id, ast::OperatorEnum::GEQ, $5);
+        auto body = $9;
+        auto action = std::make_shared<ast::AssignmentStatement>(id, idm1);
+
+        $$ = std::make_shared<ast::ForLoop>(loop_var, cond, body, action);
+    }
+;
+
+ROUTINE_CALL :
+    ID B_L EXPRESSIONS B_R {
+        ast::np<ast::RoutineCall> call;
+        for(auto u : program->routines) {
+            if(u->name == $1) {
+                $$ = std::make_shared<ast::RoutineCall>(u, $3);
+                break;        
+            }
+        }
+    }
+;
+
+EXPRESSIONS :
+    %empty {
+        std::vector<ast::np<ast::Expression>> tmp;
+        $$ = tmp;
+    }
+    | EXPRESSION COMMA_SEPARATOR EXPRESSIONS {
+        $3.push_back($1);
+        $$ = $3;
+    }
 ;
 
 %%
-void cplus::parser::error(const std::string& msg)
-{
-    std::cout << msg << '\n';
+void cplus::parser::error(const std::string& msg) {
+    std::cerr << msg << '\n';
 }

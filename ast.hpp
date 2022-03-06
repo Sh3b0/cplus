@@ -1,316 +1,400 @@
+#ifndef AST_H
+#define AST_H
+
 #include <iostream>
 #include <memory>
 #include <map>
 #include <vector>
-#include <variant>
-#include <sstream>
 
-namespace ast
-{
-    struct Node;
-    struct Program;
-    struct Literal;
-    struct Variable;
-    struct Routine;
-    struct Array;
-    struct Record;
-    struct ExpressionNode;
-    struct TypeNode;
-    enum Primitive { NIL, INTEGER, REAL, BOOLEAN };
-}
+// Forward declarations
+namespace ast {
+struct Node;
+struct Program;
+struct Type;
+struct Expression;
+struct UnaryExpression;
+struct BinaryExpression;
+struct Identifier;
+struct IntType;
+struct RealType;
+struct BoolType;
+struct ArrayType;
+struct RecordType;
+struct IntLiteral;
+struct RealLiteral;
+struct BoolLiteral;
+struct VariableDeclaration;
+struct RoutineDeclaration;
+struct Body;
+struct Statement;
+struct ReturnStatement;
+struct PrintStatement;
+struct AssignmentStatement;
+struct IfStatement;
+struct WhileLoop;
+struct ForLoop;
+struct RoutineCall;
+} // namespace ast
 
-namespace ast
-{
-    using namespace std;
+// Base class for code generator and anything that traverses AST.
+class Visitor {
+public:
+    virtual void visit(ast::Program *program) = 0;
+    virtual void visit(ast::IntType *it) = 0;
+    virtual void visit(ast::RealType *it) = 0;
+    virtual void visit(ast::BoolType *it) = 0;
+    virtual void visit(ast::ArrayType *at) = 0;
+    virtual void visit(ast::RecordType *rt) = 0;
+    virtual void visit(ast::IntLiteral *il) = 0;
+    virtual void visit(ast::RealLiteral *rl) = 0;
+    virtual void visit(ast::BoolLiteral *bl) = 0;
+    virtual void visit(ast::VariableDeclaration *vardecl) = 0;
+    virtual void visit(ast::Identifier *id) = 0;
+    virtual void visit(ast::UnaryExpression *exp) = 0;
+    virtual void visit(ast::BinaryExpression *exp) = 0;
+    virtual void visit(ast::RoutineDeclaration *routine) = 0;
+    virtual void visit(ast::Body *body) = 0;
+    virtual void visit(ast::ReturnStatement *stmt) = 0;
+    virtual void visit(ast::PrintStatement *stmt) = 0;
+    virtual void visit(ast::AssignmentStatement *stmt) = 0;
+    virtual void visit(ast::IfStatement *stmt) = 0;
+    virtual void visit(ast::WhileLoop *stmt) = 0;
+    virtual void visit(ast::ForLoop *stmt) = 0;
+    virtual void visit(ast::RoutineCall *stmt) = 0;
+};
 
-    // Pointer to an AST node.
-    template <typename T> using np = shared_ptr<T>;
+namespace ast {
 
-    struct Node {
-        string type;
-    };
+// Pointer to an AST node.
+template <typename T> using np = std::shared_ptr<T>;
 
-    struct Program : Node {
-        map<string, np<Variable>> variables;
-        map<string, np<Routine>> routines;
-        map<string, np<TypeNode>> types;
-    };
+// Enumerations
+enum class TypeEnum { INT, REAL, BOOL, ARRAY, RECORD };
+enum class OperatorEnum { PLUS, MINUS, MUL, DIV, MOD, AND, OR, NOT, XOR, EQ, NEQ, LT, GT, LEQ, GEQ }; 
 
-    struct TypeNode : Node {
-        variant<np<Primitive>, np<Array>, np<Record> > dtype;
+// Base class for AST nodes
+struct Node {
+    virtual void accept(Visitor *v) = 0;
+};
 
-        TypeNode( ) {
-            this->dtype = make_shared<Primitive>(NIL);
-        }
-
-        TypeNode(variant<np<Primitive>, np<Array>, np<Record> > dtype) {
-            this->dtype = dtype; 
-        }
-        
-        friend ostream& operator<< (ostream& stream, const TypeNode& t) {
-            std::visit([&](variant<np<Primitive>, np<Array>, np<Record> >&& arg){
-                if(holds_alternative<np<Primitive>>(arg)) stream << "Primitive";
-                else if(holds_alternative<np<Array>>(arg)) stream << "Array";
-                else if(holds_alternative<np<Record>>(arg)) stream << "Record";
-            }, t.dtype);
-            return stream;
-        }
-    };
-
-    struct Literal : Node {
-        np<TypeNode> dtype;
-        variant<int, double, bool> value;
-
-        Literal () {}
-
-        Literal (np<TypeNode> dtype) {
-            this->dtype = dtype;
-        }
-
-        Literal(np<TypeNode> dtype, variant<int, double, bool> value) {
-            this->dtype = dtype;
-            this->value = value;
-        }
-
-
-        /*
-
-            Arithmatics
-
-        */
-        np<Literal> add(np<Literal> that) {
-            if (*get<np<Primitive>>(this->dtype->dtype) == INTEGER && *get<np<Primitive>>(that->dtype->dtype) == INTEGER) {
-                return make_shared<Literal>(make_shared<TypeNode>(make_shared<Primitive>(INTEGER)), get<int>(this->value) + get<int>(that->value));
-            }
-            if ((*get<np<Primitive>>(this->dtype->dtype) == INTEGER || *get<np<Primitive>>(this->dtype->dtype) == REAL) && 
-            (*get<np<Primitive>>(that->dtype->dtype) == INTEGER || *get<np<Primitive>>(that->dtype->dtype) == REAL)) {
-                auto v1 = (*get<np<Primitive>>(this->dtype->dtype) == INTEGER) ? get<int>(this->value) : get<double>(this->value);
-                auto v2 = (*get<np<Primitive>>(that->dtype->dtype) == INTEGER) ? get<int>(that->value) : get<double>(that->value);
-                return make_shared<Literal>(make_shared<TypeNode>(make_shared<Primitive>(REAL)), v1 + v2);
-            }
-            return nullptr;
-        }
-        np<Literal> sub(np<Literal> that) {
-            if (*get<np<Primitive>>(this->dtype->dtype) == INTEGER && *get<np<Primitive>>(that->dtype->dtype) == INTEGER) {
-                return make_shared<Literal>(make_shared<TypeNode>(make_shared<Primitive>(INTEGER)), get<int>(this->value) - get<int>(that->value));
-            }
-            if ((*get<np<Primitive>>(this->dtype->dtype) == INTEGER || *get<np<Primitive>>(this->dtype->dtype) == REAL) && 
-            (*get<np<Primitive>>(that->dtype->dtype) == INTEGER || *get<np<Primitive>>(that->dtype->dtype) == REAL)) {
-                auto v1 = (*get<np<Primitive>>(this->dtype->dtype) == INTEGER) ? get<int>(this->value) : get<double>(this->value);
-                auto v2 = (*get<np<Primitive>>(that->dtype->dtype) == INTEGER) ? get<int>(that->value) : get<double>(that->value);
-                return make_shared<Literal>(make_shared<TypeNode>(make_shared<Primitive>(REAL)), v1 - v2);
-            }
-            return nullptr;
-        }
-        np<Literal> mul(np<Literal> that) {
-            if (*get<np<Primitive>>(this->dtype->dtype) == INTEGER && *get<np<Primitive>>(that->dtype->dtype) == INTEGER) {
-                return make_shared<Literal>(make_shared<TypeNode>(make_shared<Primitive>(INTEGER)), get<int>(this->value) * get<int>(that->value));
-            }
-            if ((*get<np<Primitive>>(this->dtype->dtype) == INTEGER || *get<np<Primitive>>(this->dtype->dtype) == REAL) && 
-            (*get<np<Primitive>>(that->dtype->dtype) == INTEGER || *get<np<Primitive>>(that->dtype->dtype) == REAL)) {
-                auto v1 = (*get<np<Primitive>>(this->dtype->dtype) == INTEGER) ? get<int>(this->value) : get<double>(this->value);
-                auto v2 = (*get<np<Primitive>>(that->dtype->dtype) == INTEGER) ? get<int>(that->value) : get<double>(that->value);
-                return make_shared<Literal>(make_shared<TypeNode>(make_shared<Primitive>(REAL)), v1 * v2);
-            }
-            return nullptr;
-        }
-        np<Literal> mod(np<Literal> that) {
-            if (*get<np<Primitive>>(this->dtype->dtype) == INTEGER && *get<np<Primitive>>(that->dtype->dtype) == INTEGER) {
-                return make_shared<Literal>(make_shared<TypeNode>(make_shared<Primitive>(INTEGER)), get<int>(this->value) % get<int>(that->value));
-            }
-            return nullptr;
-        }
-        np<Literal> div(np<Literal> that) {
-            if ((*get<np<Primitive>>(this->dtype->dtype) == INTEGER || *get<np<Primitive>>(this->dtype->dtype) == REAL) && 
-            (*get<np<Primitive>>(that->dtype->dtype) == INTEGER || *get<np<Primitive>>(that->dtype->dtype) == REAL)) {
-                auto v1 = (*get<np<Primitive>>(this->dtype->dtype) == INTEGER) ? get<int>(this->value) : get<double>(this->value);
-                auto v2 = (*get<np<Primitive>>(that->dtype->dtype) == INTEGER) ? get<int>(that->value) : get<double>(that->value);
-                return make_shared<Literal>(make_shared<TypeNode>(make_shared<Primitive>(REAL)), v1 / v2);
-            }
-            return nullptr;
-        }
-
-        /*
-
-            Boolean
-            
-        */
-        np<Literal> andOp(np<Literal> that) {
-            if (*get<np<Primitive>>(this->dtype->dtype) == BOOLEAN && *get<np<Primitive>>(that->dtype->dtype) == BOOLEAN) {
-                return make_shared<Literal>(make_shared<TypeNode>(make_shared<Primitive>(BOOLEAN)), get<bool>(this->value) && get<bool>(that->value));
-            }
-            return nullptr;
-        }
-        np<Literal> orOp(np<Literal> that) {
-            if (*get<np<Primitive>>(this->dtype->dtype) == BOOLEAN && *get<np<Primitive>>(that->dtype->dtype) == BOOLEAN) {
-                return make_shared<Literal>(make_shared<TypeNode>(make_shared<Primitive>(BOOLEAN)), get<bool>(this->value) || get<bool>(that->value));
-            }
-            return nullptr;
-        }
-        np<Literal> xorOp(np<Literal> that) {
-            if (*get<np<Primitive>>(this->dtype->dtype) == BOOLEAN && *get<np<Primitive>>(that->dtype->dtype) == BOOLEAN) {
-                return make_shared<Literal>(make_shared<TypeNode>(make_shared<Primitive>(BOOLEAN)), get<bool>(this->value) ^ get<bool>(that->value));
-            }
-            return nullptr;
-        }
-        np<Literal> notOp() {
-            if (*get<np<Primitive>>(this->dtype->dtype) == BOOLEAN) {
-                return make_shared<Literal>(make_shared<TypeNode>(make_shared<Primitive>(BOOLEAN)), !get<bool>(this->value));
-            }
-            return nullptr;
-        }
-
-        /*
-
-            Compartive
-            
-        */
-        np<Literal> lt(np<Literal> that) {
-            auto v1_t = *get<np<Primitive>>(this->dtype->dtype);
-            auto v1 = (v1_t == INTEGER) ? get<int>(this->value) : ((v1_t == REAL) ? get<double>(this->value) : get<bool>(this->value));
-
-            auto v2_t = *get<np<Primitive>>(that->dtype->dtype);
-            auto v2 = (v2_t == INTEGER) ? get<int>(that->value) : ((v2_t == REAL) ? get<double>(that->value) : get<bool>(that->value));
-
-            auto type = make_shared<TypeNode>(make_shared<Primitive>(ast::BOOLEAN));
-            return make_shared<Literal>(type, (v1 < v2)); 
-        }
-        np<Literal> leq(np<Literal> that) {
-            auto v1_t = *get<np<Primitive>>(this->dtype->dtype);
-            auto v1 = (v1_t == INTEGER) ? get<int>(this->value) : ((v1_t == REAL) ? get<double>(this->value) : get<bool>(this->value));
-
-            auto v2_t = *get<np<Primitive>>(that->dtype->dtype);
-            auto v2 = (v2_t == INTEGER) ? get<int>(that->value) : ((v2_t == REAL) ? get<double>(that->value) : get<bool>(that->value));
-
-            auto type = make_shared<TypeNode>(make_shared<Primitive>(ast::BOOLEAN));
-            return make_shared<Literal>(type, (v1 <= v2)); 
-        }
-        np<Literal> gt(np<Literal> that) {
-            auto v1_t = *get<np<Primitive>>(this->dtype->dtype);
-            auto v1 = (v1_t == INTEGER) ? get<int>(this->value) : ((v1_t == REAL) ? get<double>(this->value) : get<bool>(this->value));
-
-            auto v2_t = *get<np<Primitive>>(that->dtype->dtype);
-            auto v2 = (v2_t == INTEGER) ? get<int>(that->value) : ((v2_t == REAL) ? get<double>(that->value) : get<bool>(that->value));
-
-            auto type = make_shared<TypeNode>(make_shared<Primitive>(ast::BOOLEAN));
-            return make_shared<Literal>(type, (v1 > v2)); 
-        }
-        np<Literal> geq(np<Literal> that) {
-            auto v1_t = *get<np<Primitive>>(this->dtype->dtype);
-            auto v1 = (v1_t == INTEGER) ? get<int>(this->value) : ((v1_t == REAL) ? get<double>(this->value) : get<bool>(this->value));
-
-            auto v2_t = *get<np<Primitive>>(that->dtype->dtype);
-            auto v2 = (v2_t == INTEGER) ? get<int>(that->value) : ((v2_t == REAL) ? get<double>(that->value) : get<bool>(that->value));
-
-            auto type = make_shared<TypeNode>(make_shared<Primitive>(ast::BOOLEAN));
-            return make_shared<Literal>(type, (v1 >= v2)); 
-        }
-        np<Literal> eq(np<Literal> that) {
-            auto v1_t = *get<np<Primitive>>(this->dtype->dtype);
-            auto v1 = (v1_t == INTEGER) ? get<int>(this->value) : ((v1_t == REAL) ? get<double>(this->value) : get<bool>(this->value));
-
-            auto v2_t = *get<np<Primitive>>(that->dtype->dtype);
-            auto v2 = (v2_t == INTEGER) ? get<int>(that->value) : ((v2_t == REAL) ? get<double>(that->value) : get<bool>(that->value));
-
-            auto type = make_shared<TypeNode>(make_shared<Primitive>(ast::BOOLEAN));
-            return make_shared<Literal>(type, (v1 == v2)); 
-        }
-        np<Literal> neq(np<Literal> that) {
-            auto v1_t = *get<np<Primitive>>(this->dtype->dtype);
-            auto v1 = (v1_t == INTEGER) ? get<int>(this->value) : ((v1_t == REAL) ? get<double>(this->value) : get<bool>(this->value));
-
-            auto v2_t = *get<np<Primitive>>(that->dtype->dtype);
-            auto v2 = (v2_t == INTEGER) ? get<int>(that->value) : ((v2_t == REAL) ? get<double>(that->value) : get<bool>(that->value));
-
-            auto type = make_shared<TypeNode>(make_shared<Primitive>(ast::BOOLEAN));
-            return make_shared<Literal>(type, (v1 != v2)); 
-        }
-
-
-        friend ostream& operator<< (ostream& stream, const Literal& literal) {
-            std::visit([&](auto&& arg){stream << arg;}, literal.value);
-            return stream;
-        }
-    };
-
-    struct Variable : Node {
-        np<TypeNode> dtype;
-        string name;
-        np<Literal> value;
-
-        Variable(np<TypeNode> dtype, string name, np<Literal> value) {
-            this->dtype = dtype;
-            this->name = name;
-            this->value = value;
-        }
-
-        friend ostream& operator<< (ostream& stream, const Variable& var) {
-            stream << *(var.dtype) << " " << var.name << " = " << *(var.value);
-            return stream;
-        }
-    };
-
-    struct ExpressionNode : Node {
-        np<TypeNode> dtype;
-        np<Literal> value;
-
-        ExpressionNode(np<TypeNode> dtype, np<Literal> value) {
-            this->dtype = dtype;
-            this->value = value;
-        }
-    };
-
-    struct Array : Node {
-        int size;
-        np<TypeNode> dtype;
-        vector<np<Variable> > data;
-        Array () { }
-        Array(int size, np<TypeNode> dtype) {
-            this->size = size;
-            this->dtype = dtype;
-            for(int i = 0; i < size; i++)
-                data.push_back(make_shared<Variable>(dtype, "", make_shared<Literal>()));
-        }
-
-        friend ostream& operator<< (ostream& stream, const Array& arr) {
-            stream << "array[" << arr.size << "] " << '\n';
-            return stream;
-        }
-    };
-
-    struct Record : Node {
-        map<string, np<Variable> > variables;
-        Record () { }
-        Record(map<string, np<Variable> > variables){
-            this->variables = variables;
-        }
-
-        friend ostream& operator<< (ostream& stream, const Record& rec) {
-            stream << "record { ";
-            for(auto u : rec.variables) stream << *(u.second) << "; ";
-            stream << " }\n";
-            return stream;
-        }
-    };
+// A special node containing program variables, type aliases, and routines.
+struct Program : Node {
+    std::vector<np<VariableDeclaration>> variables;
+    std::map<std::string, np<Type>> types;
+    std::vector<np<RoutineDeclaration>> routines;
     
-    struct Routine : Node {
-        string name;
-        map<string, np<Variable> > params;
-        np<TypeNode> rtype;
-        // vector<np<Statement> > stmts;
-        
-        Routine(string name, map<string, np<Variable> > params, np<TypeNode> rtype){
-            this->name = name;
-            this->params = params;
-            this->rtype = rtype;
-        }
+    void accept(Visitor *v) override { v->visit(this); }
+};
 
-        friend ostream& operator<< (ostream& stream, const Routine& routine) {
-            stream << "routine " << routine.name << "( ";
-            for(auto u : routine.params) stream << *(u.second) << ", ";
-            stream << " )\n";
-            return stream;
-        }
-    };
+// Base class for Expressions
+struct Expression : Node {
+    np<Type> dtype;
+};
 
-}
+// Base class for Types
+struct Type : Node {
+    virtual TypeEnum getType() { return TypeEnum::INT; };
+    virtual void accept(Visitor *v) = 0;
+};
+
+// Base class for Statements
+struct Statement : virtual Node {
+    void accept(Visitor *v) override = 0;
+};
+
+// <Types>
+struct IntType : Type {
+    IntType() {}
+    TypeEnum getType() { return TypeEnum::INT; }
+
+    void accept(Visitor *v) override { v->visit(this); }
+};
+
+struct RealType : Type {
+    RealType() {}
+    TypeEnum getType() { return TypeEnum::REAL; }
+
+    void accept(Visitor *v) override { v->visit(this); }
+};
+
+struct BoolType : Type {
+    BoolType() {}
+    TypeEnum getType() { return TypeEnum::BOOL; }
+
+    void accept(Visitor *v) override { v->visit(this); }
+};
+
+struct ArrayType : Type {
+    np<Expression> size;
+    np<Type> dtype;
+    
+    ArrayType(np<Expression> size, np<Type>dtype) {
+        this->size = size;
+        this->dtype = dtype;
+    }
+
+    TypeEnum getType() { return TypeEnum::ARRAY; }
+
+    void accept(Visitor *v) override { v->visit(this); }
+};
+
+struct RecordType : Type {
+    std::string name; // set by llvm vardecl or typedecl
+    std::vector<np<VariableDeclaration>> fields;
+    
+    RecordType(std::vector<np<VariableDeclaration>> fields) {
+        this->fields = fields;
+    }
+
+    TypeEnum getType() { return TypeEnum::RECORD; }
+
+    void accept(Visitor *v) override { v->visit(this); }
+};
+
+// </Types>
+// <Expressions>
+struct UnaryExpression : Expression {
+    np<Expression> operand;
+    OperatorEnum op;
+
+    UnaryExpression(OperatorEnum op, np<Expression> operand) {
+        this->operand = operand;
+        this->op = op;
+    }
+
+    void accept(Visitor *v) override { v->visit(this); }
+};
+
+struct BinaryExpression : Expression {
+    np<Expression> lhs, rhs;
+    OperatorEnum op;
+
+    BinaryExpression(np<Expression> lhs, OperatorEnum op, np<Expression> rhs) {
+        this->lhs = lhs;
+        this->rhs = rhs;
+        this->op = op;
+    }
+
+    void accept(Visitor *v) override { v->visit(this); }
+};
+
+struct IntLiteral : Expression {
+    int64_t value;
+
+    IntLiteral(int64_t value) {
+        this->dtype = std::make_shared<IntType>();
+        this->value = value;
+    }
+
+    void accept(Visitor *v) override { v->visit(this); }
+};
+
+struct RealLiteral : Expression {
+    double value;
+
+    RealLiteral(double value) {
+        this->dtype = std::make_shared<RealType>();
+        this->value = value;
+    }
+
+    void accept(Visitor *v) override { v->visit(this); }
+};
+
+struct BoolLiteral : Expression {
+    bool value;
+
+    BoolLiteral(bool value) {
+        this->dtype = std::make_shared<BoolType>();
+        this->value = value;
+    }
+
+    void accept(Visitor *v) override { v->visit(this); }
+};
+
+struct Identifier : Expression {
+    std::string name;
+    np<Expression> idx;
+    
+    // variable or record field access
+    Identifier(std::string name) {
+        this->name = name;
+    }
+    
+    // array element access
+    Identifier(std::string name, np<Expression> idx) {
+        this->name = name;
+        this->idx = idx;
+    }
+
+    void accept(Visitor *v) override { v->visit(this); }
+};
+
+// </Expressions>
+// <Nodes>
+struct VariableDeclaration : Node {
+    std::string name;
+    np<Type> dtype;
+    np<Expression> iv;
+
+    VariableDeclaration(std::string name, np<Type> dtype) {
+        this->name = name;
+        this->dtype = dtype;
+        this->iv = nullptr;
+    }
+
+    VariableDeclaration(std::string name, np<Expression> iv) {
+        this->name = name;
+        this->dtype = iv->dtype;
+        this->iv = iv;
+    }
+
+    VariableDeclaration(std::string name, np<Type> dtype, np<Expression> iv) {
+        this->name = name;
+        this->dtype = dtype;
+        this->iv = iv;
+    }
+
+    void accept(Visitor *v) { v->visit(this); }
+};
+
+struct Body : Node {
+    std::vector<np<Statement>> statements;
+    std::vector<np<VariableDeclaration>> variables;
+    // std::vector<np<TypeDeclaration>> types;
+    
+    Body(std::vector<np<VariableDeclaration>> variables, std::vector<np<Statement>> statements) {
+        this->variables = variables;
+        this->statements = statements;
+    }
+
+    void accept(Visitor *v) override { v->visit(this); }
+};
+
+struct RoutineDeclaration : Node {
+    std::string name;
+    std::vector<np<VariableDeclaration>> params;
+    np<Type> rtype;
+    np<Body> body;
+    
+    RoutineDeclaration(std::string name, std::vector<np<VariableDeclaration>> params, np<Body> body, np<Type> rtype) {
+        this->name = name;
+        this->params = params;
+        this->rtype = rtype;
+        this->body = body;
+    }
+    
+    RoutineDeclaration(std::string name, std::vector<np<VariableDeclaration>> params, np<Body> body) {
+        this->name = name;
+        this->params = params;
+        this->body = body;
+    }
+
+    void accept(Visitor *v) override { v->visit(this); }
+};
+
+// </Nodes>
+// <Statements>
+struct ReturnStatement : Statement {
+    np<Expression> exp;
+    
+    ReturnStatement() {}
+
+    ReturnStatement(np<Expression> exp) {
+        this->exp = exp;
+    }
+
+    void accept(Visitor *v) override { v->visit(this); }
+};
+
+struct PrintStatement : Statement {
+    np<Expression> exp;
+    np<std::string> str;
+    bool endl;
+
+    PrintStatement(np<Expression> exp, bool endl=false) {
+        this->exp = exp;
+        this->endl = endl;
+    }
+
+    PrintStatement(np<std::string> str, bool endl=false) {
+        this->str = str;
+        this->endl = endl;
+    }
+
+    void accept(Visitor *v) override { v->visit(this); }
+};
+
+struct AssignmentStatement : Statement {
+    np<Identifier> id;
+    np<Expression> exp;
+
+    AssignmentStatement(np<Identifier> id, np<Expression> exp) {
+        this->id = id;
+        this->exp = exp;
+    }
+
+    void accept(Visitor *v) override { v->visit(this); }
+};
+
+struct IfStatement : Statement {
+    np<Expression> cond;
+    np<Body> then_body, else_body;
+
+    IfStatement(np<Expression> cond, np<Body> then_body) {
+        this->cond = cond;
+        this->then_body = then_body;
+    }
+
+    IfStatement(np<Expression> cond, np<Body> then_body, np<Body> else_body) {
+        this->cond = cond;
+        this->then_body = then_body;
+        this->else_body = else_body;
+    }
+
+    void accept(Visitor *v) override { v->visit(this); }
+};
+
+struct WhileLoop : Statement {
+    np<Expression> cond;
+    np<Body> body;
+
+    WhileLoop(np<Expression> cond, np<Body> body) {
+        this->cond = cond;
+        this->body = body;
+    }
+
+    void accept(Visitor *v) override { v->visit(this); }
+};
+
+struct ForLoop : Statement {
+    np<VariableDeclaration> loop_var;
+    np<Expression> cond;
+    np<Body> body;
+    np<AssignmentStatement> action;
+
+    ForLoop(np<VariableDeclaration> loop_var, np<Expression> cond, np<Body> body, np<AssignmentStatement> action) {
+        this->loop_var = loop_var;
+        this->cond = cond;
+        this->body = body;
+        this->action = action;
+    }
+
+    void accept(Visitor *v) override { v->visit(this); }
+};
+
+struct RoutineCall : Statement, Expression {
+    np<RoutineDeclaration> routine;
+    std::vector<np<Expression>> args;
+
+    RoutineCall(np<RoutineDeclaration> routine, std::vector<np<Expression>> args) {
+        this->routine = routine;
+        this->args = args;
+    }
+
+    void accept(Visitor *v) override { v->visit(this); }
+};
+
+// </Statements>
+} // namespace ast
+
+#endif // AST_H

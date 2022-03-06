@@ -8,285 +8,301 @@
 #include "lexer.h"
 #include "shell.hpp"
 #include "parser.hpp"
+
+#define RESET     "\033[0m"
+#define YELLOW    "\033[33m"
+#define LDEBUG(X) if (driver.debug) std::cout << YELLOW << X << RESET << " ";  
 %}
 
 digit      [0-9]
 alpha      [a-zA-Z_]
-alphanum   [a-zA-Z_0-9]
+alphanum   [a-zA-Z_0-9\.]
 
 %%
 
-#.*     ;       /* ignore comments */
+#.* ; /* ignore comments */
 
-[ \t\n] ;       /* ignore whitespaces */
+[ \t]+ {
+    LDEBUG(" ")
+}
+
+[\n]+ {
+    LDEBUG("\n")
+}
 
 "var" {
-    if (driver.ldebug) std::cout << "[LEXER]: VAR\n";
+    LDEBUG("VAR")
     return cplus::parser::make_VAR();
 }
 
 "is" {
-    if (driver.ldebug) std::cout << "[LEXER]: IS\n";
+    LDEBUG("IS")
     return cplus::parser::make_IS();
 }
 
 "type" {
-    if (driver.ldebug) std::cout << "[LEXER]: TYPE\n";
-    return cplus::parser::make_TYPE();
+    LDEBUG("TYPE")
+    return cplus::parser::make_TYPE_KW();
 }
 
 "integer" {
-    if (driver.ldebug) std::cout << "[LEXER]: INT_KW\n";
+    LDEBUG("INT_KW")
     return cplus::parser::make_INT_KW();
 }
 
 "real" {
-    if (driver.ldebug) std::cout << "[LEXER]: REAL_KW\n";
+    LDEBUG("REAL_KW")
     return cplus::parser::make_REAL_KW();
 }
 
 "boolean" {
-    if (driver.ldebug) std::cout << "[LEXER]: BOOLEAN_KW\n";
-    return cplus::parser::make_BOOLEAN_KW();
+    LDEBUG("BOOL_KW")
+    return cplus::parser::make_BOOL_KW();
 }
 
 "array" {
-    if (driver.ldebug) std::cout << "[LEXER]: ARRAY\n";
+    LDEBUG("ARRAY")
     return cplus::parser::make_ARRAY();
 }
 
 "record" {
-    if (driver.ldebug) std::cout << "[LEXER]: RECORD\n";
+    LDEBUG("RECORD")
     return cplus::parser::make_RECORD();
 }
 
 "routine" {
-    if (driver.ldebug) std::cout << "[LEXER]: ROUTINE\n";
+    LDEBUG("ROUTINE")
     return cplus::parser::make_ROUTINE();
 }
 
 "return" {
-    if (driver.ldebug) std::cout << "[LEXER]: RETURN\n";
+    LDEBUG("RETURN")
     return cplus::parser::make_RETURN();
 }
 
 "end" {
-    if (driver.ldebug) std::cout << "[LEXER]: END\n";
+    LDEBUG("END")
     return cplus::parser::make_END();
 }
 
 "print" {
-    if (driver.ldebug) std::cout << "[LEXER]: PRINT\n";
+    LDEBUG("PRINT")
     return cplus::parser::make_PRINT();
 }
 
+"println" {
+    LDEBUG("PRINTLN")
+    return cplus::parser::make_PRINTLN();
+}
+
 "if" {
-    if (driver.ldebug) std::cout << "[LEXER]: IF\n";
+    LDEBUG("IF")
     return cplus::parser::make_IF();
 }
 
 "then" {
-    if (driver.ldebug) std::cout << "[LEXER]: THEN\n";
+    LDEBUG("THEN")
     return cplus::parser::make_THEN();
 }
 
 "else" {
-    if (driver.ldebug) std::cout << "[LEXER]: ELSE\n";
+    LDEBUG("ELSE")
     return cplus::parser::make_ELSE();
 }
 
 "while" {
-    if (driver.ldebug) std::cout << "[LEXER]: WHILE\n";
+    LDEBUG("WHILE")
     return cplus::parser::make_WHILE();
 }
 
 "for" {
-    if (driver.ldebug) std::cout << "[LEXER]: FOR\n";
+    LDEBUG("FOR")
     return cplus::parser::make_FOR();
 }
 
 "in" {
-    if (driver.ldebug) std::cout << "[LEXER]: IN\n";
+    LDEBUG("IN")
     return cplus::parser::make_IN();
 }
 
 "loop" {
-    if (driver.ldebug) std::cout << "[LEXER]: LOOP\n";
+    LDEBUG("LOOP")
     return cplus::parser::make_LOOP();
 }
 
 "reverse" {
-    if (driver.ldebug) std::cout << "[LEXER]: REVERSE\n";
+    LDEBUG("REVERSE")
     return cplus::parser::make_REVERSE();
 }
 
 "and" {
-    if (driver.ldebug) std::cout << "[LEXER]: AND\n";
+    LDEBUG("AND")
     return cplus::parser::make_AND();
 }
 
 "or" {
-    if (driver.ldebug) std::cout << "[LEXER]: OR\n";
+    LDEBUG("OR")
     return cplus::parser::make_OR();
 }
 
 "xor" {
-    if (driver.ldebug) std::cout << "[LEXER]: XOR\n";
+    LDEBUG("XOR")
     return cplus::parser::make_XOR();
 }
 
 "not" {
-    if (driver.ldebug) std::cout << "[LEXER]: NOT\n";
+    LDEBUG("NOT")
     return cplus::parser::make_NOT();
 }
 
 "+" {
-    if (driver.ldebug) std::cout << "[LEXER]: PLUS\n";
+    LDEBUG("PLUS")
     return cplus::parser::make_PLUS();
 }
 
 "-" {
-    if (driver.ldebug) std::cout << "[LEXER]: MINUS\n";
+    LDEBUG("MINUS")
     return cplus::parser::make_MINUS();
 }
 
 "*" {
-    if (driver.ldebug) std::cout << "[LEXER]: MUL\n";
+    LDEBUG("MUL")
     return cplus::parser::make_MUL();
 }
 
 "/" {
-    if (driver.ldebug) std::cout << "[LEXER]: DIV\n";
+    LDEBUG("DIV")
     return cplus::parser::make_DIV();
 }
 
 "%" {
-    if (driver.ldebug) std::cout << "[LEXER]: MOD\n";
+    LDEBUG("MOD")
     return cplus::parser::make_MOD();
 }
 
 ";" {
-    if (driver.ldebug) std::cout << "[LEXER]: SEMICOLON\n";
+    LDEBUG("SEMICOLON")
     return cplus::parser::make_SEMICOLON();
 }
 
 ":" {
-    if (driver.ldebug) std::cout << "[LEXER]: COLON\n";
+    LDEBUG("COLON")
     return cplus::parser::make_COLON();
 }
 
 "," {
-    if (driver.ldebug) std::cout << "[LEXER]: COMMA\n";
+    LDEBUG("COMMA")
     return cplus::parser::make_COMMA();
 }
 
 "(" {
-    if (driver.ldebug) std::cout << "[LEXER]: B_L\n";
+    LDEBUG("B_L")
     return cplus::parser::make_B_L();
 }
 
 ")" {
-    if (driver.ldebug) std::cout << "[LEXER]: B_R\n";
+    LDEBUG("B_R")
     return cplus::parser::make_B_R();
 }
 
 "[" {
-    if (driver.ldebug) std::cout << "[LEXER]: SB_L\n";
+    LDEBUG("SB_L")
     return cplus::parser::make_SB_L();
 }
 
 "]" {
-    if (driver.ldebug) std::cout << "[LEXER]: SB_R\n";
+    LDEBUG("SB_R")
     return cplus::parser::make_SB_R();
 }
 
 "{" {
-    if (driver.ldebug) std::cout << "[LEXER]: CB_L\n";
+    LDEBUG("CB_L")
     return cplus::parser::make_CB_L();
 }
 
 "}" {
-    if (driver.ldebug) std::cout << "[LEXER]: CB_R\n";
+    LDEBUG("CB_R")
     return cplus::parser::make_CB_R();
 }
 
-"." {
-    if (driver.ldebug) std::cout << "[LEXER]: DOT\n";
-    return cplus::parser::make_DOT();
-}
-
 ".." {
-    if (driver.ldebug) std::cout << "[LEXER]: DDOT\n";
+    LDEBUG("DDOT")
     return cplus::parser::make_DDOT();
 }
 
 ":=" {
-    if (driver.ldebug) std::cout << "[LEXER]: BECOMES\n";
+    LDEBUG("BECOMES")
     return cplus::parser::make_BECOMES();
 }
 
 "=" {
-    if (driver.ldebug) std::cout << "[LEXER]: EQ\n";
+    LDEBUG("EQ")
     return cplus::parser::make_EQ();
 }
 
 "<" {
-    if (driver.ldebug) std::cout << "[LEXER]: LT\n";
+    LDEBUG("LT")
     return cplus::parser::make_LT();
 }
 
 "<=" {
-    if (driver.ldebug) std::cout << "[LEXER]: LEQ\n";
+    LDEBUG("LEQ")
     return cplus::parser::make_LEQ();
 }
 
 ">" {
-    if (driver.ldebug) std::cout << "[LEXER]: GT\n";
+    LDEBUG("GT")
     return cplus::parser::make_GT();
 }
 
 ">=" {
-    if (driver.ldebug) std::cout << "[LEXER]: GEQ\n";
+    LDEBUG("GEQ")
     return cplus::parser::make_GEQ();
 }
 
 "/=" {
-    if (driver.ldebug) std::cout << "[LEXER]: NEQ\n";
+    LDEBUG("NEQ")
     return cplus::parser::make_NEQ();
 }
 
 true {
-    if (driver.ldebug) std::cout << "[LEXER]: BOOL_VAL\n";
+    LDEBUG("BOOL_VAL")
     return cplus::parser::make_BOOL_VAL(true);
 }
 
 false {
-    if (driver.ldebug) std::cout << "[LEXER]: BOOL_VAL\n";
+    LDEBUG("BOOL_VAL")
     return cplus::parser::make_BOOL_VAL(false);
 }
 
 {alpha}{alphanum}* {
-    if (driver.ldebug) std::cout << "[LEXER]: IDENTIFIER\n";
+    LDEBUG("ID")
     return cplus::parser::make_ID(yytext);
 }
 
 -?{digit}+\.{digit}+ {
-    if (driver.ldebug) std::cout << "[LEXER]: REAL_VAL\n";
+    LDEBUG("REAL_VAL")
     return cplus::parser::make_REAL_VAL(atof(yytext));
 }
 
 -?{digit}+ {
-    if (driver.ldebug) std::cout << "[LEXER]: INT_VAL\n";
+    LDEBUG("INT_VAL")
     return cplus::parser::make_INT_VAL(atoi(yytext));
 }
 
-. {
-    std::cout << "[LEXER]: Unknown token: " << yytext << '\n';
+"\"".*"\"" {
+    LDEBUG("STRING")
+    return cplus::parser::make_STRING(yytext);
 }
 
 <<EOF>> {
-    if (driver.ldebug) std::cout << "[LEXER]: EOF \n";
+    LDEBUG("EOF")
     return 0;
+}
+
+. {
+    std::cerr << YELLOW << "[LEXER]: Unknown token: " << yytext << '\n';
+    std::exit(1);
 }
 
 %%
