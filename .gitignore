@@ -15,6 +15,5 @@ parser.dot
 parser.output
 a.out
 ir.ll
-run.sh
 Makefile
 TODO
