@@ -1,0 +1,26 @@
+Hello C+
+If statement: works
+While loop: 5 4 3 2 1 
+For loop: 
+0 0
+1 1
+2 3
+3 6
+4 10
+
+Expressions:
+x = 20
+y = -15.000000
+z = 0
+5 / 2 = 2
+5.0 / 2 = 2.500000
+
+Casting:
+-15
+1
+1.000000
+0.000000
+1
+0
+Arrays and records: 
+7.500000

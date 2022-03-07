@@ -124,7 +124,9 @@ void IRGenerator::visit(ast::VariableDeclaration *var) {
         }
 
         // dtype is primitive
-        else if (var->dtype->getType() == ast::TypeEnum::PRIMITIVE) {
+        else if (var->dtype->getType() == ast::TypeEnum::INT ||
+                 var->dtype->getType() == ast::TypeEnum::REAL ||
+                 var->dtype->getType() == ast::TypeEnum::BOOL) {
             if(var->iv) { // iv is given, deduce dtype 
                 goto deduce;
             }
@@ -848,6 +850,22 @@ void IRGenerator::visit(ast::RoutineCall *stmt) {
     }
 
     tmp_v = builder->CreateCall(routine, args);
+    switch(stmt->routine->rtype->getType()) {
+        case ast::TypeEnum::INT:
+            tmp_t = int_t;
+            break;
+
+        case ast::TypeEnum::REAL:
+            tmp_t = real_t;
+            break;
+
+        case ast::TypeEnum::BOOL:
+            tmp_t = bool_t;
+            break;
+        
+        default:
+            GERROR("Rtype is non-primitive")
+    }
     
     BLOCK_E("RoutineCall")
 }

@@ -69,7 +69,7 @@ namespace ast {
 template <typename T> using np = std::shared_ptr<T>;
 
 // Enumerations
-enum class TypeEnum { PRIMITIVE, ARRAY, RECORD };
+enum class TypeEnum { INT, REAL, BOOL, ARRAY, RECORD };
 enum class OperatorEnum { PLUS, MINUS, MUL, DIV, MOD, AND, OR, NOT, XOR, EQ, NEQ, LT, GT, LEQ, GEQ }; 
 
 // Base class for AST nodes
@@ -93,7 +93,7 @@ struct Expression : Node {
 
 // Base class for Types
 struct Type : Node {
-    virtual TypeEnum getType() { return TypeEnum::PRIMITIVE; };
+    virtual TypeEnum getType() { return TypeEnum::INT; };
     virtual void accept(Visitor *v) = 0;
 };
 
@@ -105,21 +105,21 @@ struct Statement : virtual Node {
 // <Types>
 struct IntType : Type {
     IntType() {}
-    TypeEnum getType() { return TypeEnum::PRIMITIVE; }
+    TypeEnum getType() { return TypeEnum::INT; }
 
     void accept(Visitor *v) override { v->visit(this); }
 };
 
 struct RealType : Type {
     RealType() {}
-    TypeEnum getType() { return TypeEnum::PRIMITIVE; }
+    TypeEnum getType() { return TypeEnum::REAL; }
 
     void accept(Visitor *v) override { v->visit(this); }
 };
 
 struct BoolType : Type {
     BoolType() {}
-    TypeEnum getType() { return TypeEnum::PRIMITIVE; }
+    TypeEnum getType() { return TypeEnum::BOOL; }
 
     void accept(Visitor *v) override { v->visit(this); }
 };

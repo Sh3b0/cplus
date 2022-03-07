@@ -1,4 +1,3 @@
-
 routine max (a : integer, b : integer) : integer is
     var ret : integer;
     if a > b then

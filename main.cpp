@@ -41,7 +41,7 @@ int main(int argc, char **argv) {
     std::string cmd = "clang -x ir ir.ll -o " + shell.outfile;
     
     if(!system(cmd.c_str())) {
-        std::cout << "\033[0m" << "\nCompilation successful. Run ./" << shell.outfile << " to execute\n";
+        std::cout << "\033[0m" << "Compilation successful. Run ./" << shell.outfile << " to execute\n";
     }
     else {
         std::cerr << RESET << RED << "Error generating IR\n";
