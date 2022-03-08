@@ -26,7 +26,7 @@ Compiler for **C+** toy imperative language, based on [LLVM](https://llvm.org/do
 - Compile
 
   ```bash
-  $ ./cplus -d sample.cp
+  $ ./cplus sample.cp
   
   Compilation successful. Run ./a.out to execute
   ```
@@ -90,7 +90,7 @@ Compiler for **C+** toy imperative language, based on [LLVM](https://llvm.org/do
 
    ```bash
    cd build
-   ./cplus -d ../examples/ex1.cp
+   ./cplus -d ../examples/1.cp
    ```
 
 5. Help
