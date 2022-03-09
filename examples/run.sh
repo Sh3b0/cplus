@@ -1,7 +1,7 @@
-for i in {1..11}
+for i in {1..12}
 do
     echo -e "\nTest ${i}\n================\n"
-	./cplus ${i}.cp
+	../build/cplus ${i}.cp
     ./a.out > out.txt
     diff out.txt ${i}.ans
 done
