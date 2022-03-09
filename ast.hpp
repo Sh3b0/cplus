@@ -234,24 +234,24 @@ struct Identifier : Expression {
 struct VariableDeclaration : Node {
     std::string name;
     np<Type> dtype;
-    np<Expression> iv;
+    np<Expression> initial_value;
 
     VariableDeclaration(std::string name, np<Type> dtype) {
         this->name = name;
         this->dtype = dtype;
-        this->iv = nullptr;
+        this->initial_value = nullptr;
     }
 
-    VariableDeclaration(std::string name, np<Expression> iv) {
+    VariableDeclaration(std::string name, np<Expression> initial_value) {
         this->name = name;
-        this->dtype = iv->dtype;
-        this->iv = iv;
+        this->dtype = initial_value->dtype;
+        this->initial_value = initial_value;
     }
 
-    VariableDeclaration(std::string name, np<Type> dtype, np<Expression> iv) {
+    VariableDeclaration(std::string name, np<Type> dtype, np<Expression> initial_value) {
         this->name = name;
         this->dtype = dtype;
-        this->iv = iv;
+        this->initial_value = initial_value;
     }
 
     void accept(Visitor *v) { v->visit(this); }

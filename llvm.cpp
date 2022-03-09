@@ -77,6 +77,36 @@ llvm::Type *IRGenerator::pop_t() {
     return t;
 }
 
+// handles primitive casting for AssignmentStatement and VariableDeclaration
+llvm::Value* IRGenerator::castPrimitive(llvm::Value* value, llvm::Type* explicit_type, llvm::Type* implicit_type) {
+    if(explicit_type == implicit_type)
+        return value;
+    if(explicit_type == int_t && implicit_type == real_t) { // real -> int
+        return builder->CreateFPToSI(value, explicit_type, "intcast");
+    }
+    else if(explicit_type == bool_t && implicit_type == real_t) { // real -> bool
+        return builder->CreateFPToSI(value, explicit_type, "boolcast");
+    }
+    else if(explicit_type == real_t && implicit_type == int_t) { // int -> real
+        return builder->CreateSIToFP(value, explicit_type, "fpcast");
+    }
+    else if(explicit_type == bool_t && implicit_type == int_t) { // int -> bool
+        return builder->CreateICmpNE(value, llvm::ConstantInt::get(context, llvm::APInt(64, 0)), "boolcast");
+    }
+    else if(explicit_type == int_t && implicit_type == bool_t) { // bool -> int
+        return builder->CreateIntCast(value, explicit_type, false);
+    }
+    else if(explicit_type == real_t && implicit_type == bool_t) { // bool -> real
+        return builder->CreateFPCast(value, explicit_type);
+    }
+    std::cerr << RED << "[LLVM]: [ERROR]: Unsupported conversion: ";
+    explicit_type->print(llvm::errs());
+    std::cerr << " -> ";
+    implicit_type->print(llvm::errs());
+    std::cerr << std::endl;
+    std::exit(1);
+}
+
 void IRGenerator::visit(ast::Program *program) {
     BLOCK_B("Program")
 
@@ -101,6 +131,7 @@ void IRGenerator::visit(ast::VariableDeclaration *var) {
     BLOCK_B("VariableDeclaration")
 
     llvm::Type *dtype = nullptr;
+    llvm::Value* initial_value = nullptr;
 
     // var dtype is given
     if (var->dtype) {
@@ -127,13 +158,14 @@ void IRGenerator::visit(ast::VariableDeclaration *var) {
         else if (var->dtype->getType() == ast::TypeEnum::INT ||
                  var->dtype->getType() == ast::TypeEnum::REAL ||
                  var->dtype->getType() == ast::TypeEnum::BOOL) {
-            if(var->iv) { // iv is given, deduce dtype 
-                goto deduce;
-            }
-            else {
-                var->dtype->accept(this);
-                dtype = pop_t();
-            }
+            var->dtype->accept(this);
+            dtype = pop_t();
+
+            if(var->initial_value) {
+                var->initial_value->accept(this);
+                initial_value = pop_v();
+                initial_value = castPrimitive(initial_value, dtype, initial_value->getType());
+            }   
         }
 
         // unknown dtype
@@ -142,10 +174,11 @@ void IRGenerator::visit(ast::VariableDeclaration *var) {
         }
     }
 
-    // dtype is not given, deduce dtype from iv
+    // dtype is not given, deduce dtype from initial value
     else {
-        deduce:
-        var->iv->accept(this);
+        // deduce:
+        var->initial_value->accept(this);
+        initial_value = pop_v();
         dtype = pop_t();
         
         if(!dtype) {
@@ -162,7 +195,7 @@ void IRGenerator::visit(ast::VariableDeclaration *var) {
         g->setLinkage(llvm::GlobalValue::ExternalLinkage);
 
         // global is not initialized, initialize it with default value
-        if(!(var->iv)) {
+        if(!(initial_value)) {
             if(dtype == int_t) {
                 g->setInitializer(llvm::ConstantInt::get(context, llvm::APInt(64, 0, true)));
             }
@@ -179,9 +212,8 @@ void IRGenerator::visit(ast::VariableDeclaration *var) {
 
         // global is initialized, set initializer for it.
         else {
-            var->iv->accept(this);
             if(dtype == int_t || dtype == bool_t) {
-                if (auto init = llvm::dyn_cast<llvm::ConstantInt>(pop_v())) {
+                if (auto init = llvm::dyn_cast<llvm::ConstantInt>(initial_value)) {
                     g->setInitializer(init);
                 }
                 else {
@@ -189,7 +221,7 @@ void IRGenerator::visit(ast::VariableDeclaration *var) {
                 }
             }
             else if(dtype == real_t) {
-                if (auto init = llvm::dyn_cast<llvm::ConstantFP>(pop_v())) {
+                if (auto init = llvm::dyn_cast<llvm::ConstantFP>(initial_value)) {
                     g->setInitializer(init);
                 }
                 else {
@@ -209,9 +241,8 @@ void IRGenerator::visit(ast::VariableDeclaration *var) {
         auto p = builder->CreateAlloca(dtype, nullptr, var->name);
 
         // If an initial value was given, store it in the allocated space. 
-        if (var->iv) {
-            var->iv->accept(this);
-            builder->CreateStore(pop_v(), p);
+        if (initial_value) {
+            builder->CreateStore(initial_value, p);
         }
         
         // Save var location for later reference
@@ -656,35 +687,7 @@ void IRGenerator::visit(ast::AssignmentStatement *stmt) {
     stmt->exp->accept(this);
     auto exp = pop_v();
 
-    auto lhs_t = builder->CreateLoad(id_loc)->getType();
-    auto rhs_t = exp->getType();
-
-    if(lhs_t == int_t && rhs_t == real_t) { // real -> int
-        exp = builder->CreateFPToSI(exp, lhs_t, "intcast");
-    }
-    else if(lhs_t == bool_t && rhs_t == real_t) { // real -> bool
-        exp = builder->CreateFPToSI(exp, lhs_t, "boolcast");
-    }
-    else if(lhs_t == real_t && rhs_t == int_t) { // int -> real
-        exp = builder->CreateSIToFP(exp, lhs_t, "fpcast");
-    }
-    else if(lhs_t == bool_t && rhs_t == int_t) { // int -> bool
-        exp = builder->CreateICmpNE(exp, llvm::ConstantInt::get(context, llvm::APInt(64, 0)), "boolcast");
-    }
-    else if(lhs_t == int_t && rhs_t == bool_t) { // bool -> int
-        exp = builder->CreateIntCast(exp, lhs_t, false);
-    }
-    else if(lhs_t == real_t && rhs_t == bool_t) { // bool -> real
-        exp = builder->CreateFPCast(exp, lhs_t);
-    }
-    else if(lhs_t != rhs_t) {
-        std::cerr << RED << "[LLVM]: [ERROR]: Unsupported conversion: ";
-        lhs_t->print(llvm::errs());
-        std::cerr << " -> ";
-        rhs_t->print(llvm::errs());
-        std::cerr << std::endl;
-        std::exit(1);
-    }
+    exp = castPrimitive(exp, builder->CreateLoad(id_loc)->getType(), exp->getType());
     
     builder->CreateStore(exp, id_loc);
 
