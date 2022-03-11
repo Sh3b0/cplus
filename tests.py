@@ -67,9 +67,11 @@ if __name__ == "__main__":
     assert len(sys.argv) == 2, "You must provide a path to test directory. Example: \"python test.py ./examples/\"."
     test_dir = sys.argv[1]
 
+    assert os.path.isfile(COMPILER_NAME) or os.path.isfile(COMPILER_NAME + ".exe"), "Cplus compiler must be in the same folder as tests.py"
+
     # clear report file
     open("report.txt", "w").close()
-
+    
     # traverse test directry and discover test cases
     for root, dirs, files in os.walk(test_dir):
         # only "*.cp" files are test case sources
