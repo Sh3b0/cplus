@@ -38,7 +38,7 @@ class ExampleTest(unittest.TestCase):
                     program_name = PROGRAM_NAME                
                 try:
                     # run Cplus compiler
-                    subprocess.check_call(f"{compiler_name} {example + SOURCE_EXT}", stdin=None, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, shell=False)
+                    subprocess.check_call(f"{compiler_name} ./{example + SOURCE_EXT}", stdin=None, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, shell=False)
 
                     # run generated program and write its output to "out.txt"
                     with open("out.txt", "w") as actual:
