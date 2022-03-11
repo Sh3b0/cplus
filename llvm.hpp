@@ -42,8 +42,8 @@ public:
     void visit(ast::ForLoop *stmt) override;
     void visit(ast::RoutineCall *stmt) override;
 
-    llvm::Value* exp_to_bool(llvm::Value *cond);
-    llvm::Value* castPrimitive(llvm::Value*, llvm::Type*, llvm::Type*);
+    llvm::Value *exp_to_bool(llvm::Value *cond);
+    llvm::Value *cast_primitive(llvm::Value*, llvm::Type*, llvm::Type*);
 
 private:
     llvm::LLVMContext context;

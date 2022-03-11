@@ -12,6 +12,6 @@ end
 
 routine main() is
 	var factorsNumber : integer is getNumberOfFactors(10);
-	print factorsNumber;
+	println factorsNumber;
 	return;
 end

@@ -24,6 +24,7 @@ routine main(input : integer) : int is
 	b := power(c, a);
 	a := power(b, c);
 	var d is power(c, 2) * power(c, 3);
-	return d;
+	println d;
+	return 0;
 end
 

@@ -38,7 +38,7 @@ end
 
 routine main() : real is
 	var res is calculate(1, 2, a);
-	print f7(res);
-	return 0.0;
+	println f7(res);
+	return 0;
 end
 

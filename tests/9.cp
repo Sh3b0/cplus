@@ -7,6 +7,6 @@ end
 
 routine main() is
 	var miles : real is convertToMiles(x);
-	print miles;
+	println miles;
 	return;
 end

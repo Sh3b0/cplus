@@ -78,7 +78,7 @@ llvm::Type *IRGenerator::pop_t() {
 }
 
 // handles primitive casting for AssignmentStatement and VariableDeclaration
-llvm::Value* IRGenerator::castPrimitive(llvm::Value* value, llvm::Type* explicit_type, llvm::Type* implicit_type) {
+llvm::Value* IRGenerator::cast_primitive(llvm::Value* value, llvm::Type* explicit_type, llvm::Type* implicit_type) {
     if(explicit_type == implicit_type)
         return value;
     if(explicit_type == int_t && implicit_type == real_t) { // real -> int
@@ -164,7 +164,7 @@ void IRGenerator::visit(ast::VariableDeclaration *var) {
             if(var->initial_value) {
                 var->initial_value->accept(this);
                 initial_value = pop_v();
-                initial_value = castPrimitive(initial_value, dtype, initial_value->getType());
+                initial_value = cast_primitive(initial_value, dtype, initial_value->getType());
             }   
         }
 
@@ -687,7 +687,7 @@ void IRGenerator::visit(ast::AssignmentStatement *stmt) {
     stmt->exp->accept(this);
     auto exp = pop_v();
 
-    exp = castPrimitive(exp, builder->CreateLoad(id_loc)->getType(), exp->getType());
+    exp = cast_primitive(exp, builder->CreateLoad(id_loc)->getType(), exp->getType());
     
     builder->CreateStore(exp, id_loc);
 
