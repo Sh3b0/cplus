@@ -18,8 +18,8 @@ Compiler for **C+** toy imperative language, based on [LLVM](https://llvm.org/do
 
   ```python
   routine main() is
-  	println "Hello C+";
-  	return;
+      println "Hello C+";
+      return;
   end
   ```
 
@@ -86,11 +86,11 @@ Compiler for **C+** toy imperative language, based on [LLVM](https://llvm.org/do
    cmake --build build
    ```
 
-4. Compile a source file `*.cp` (check [examples](./examples))
+4. Compile a source file `*.cp` (check [tests](./tests))
 
    ```bash
    cd build
-   ./cplus -d ../examples/1.cp
+   ./cplus -d ../tests/1.cp
    ```
 
 5. Help
