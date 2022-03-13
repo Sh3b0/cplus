@@ -17,9 +17,9 @@ Compiler for **C+** toy imperative language, based on [LLVM](https://llvm.org/do
 - Code `sample.cp`
 
   ```python
-  routine main() : integer is
+  routine main() is
   	println "Hello C+";
-  	return 0;
+  	return;
   end
   ```
 
