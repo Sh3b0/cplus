@@ -38,7 +38,7 @@ VariableDeclaration :
 
 ```haskell
 Expression : 
-        IntegralLiteral
+        IntegerLiteral
         | RealLiteral
         | BooleanLiteral
         | ModifiablePrimary
@@ -49,7 +49,7 @@ Expression :
 ```
 
 ```haskell
-ModifiablePrimary : Identifier | Identifier "[" Expression "]"
+ModifiablePrimary : Identifier | Identifier "." Identifier | Identifier "[" Expression "]"
 RoutineCall : Identifier "(" [ Expression { "," Expression } ] ")"
 ```
 
