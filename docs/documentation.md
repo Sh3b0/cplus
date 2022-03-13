@@ -1,15 +1,12 @@
 # C+ Documentation
-
 ## Table of Contents
 
 - [Documentation Guide](#Documentation-Guide)
 - [Variable Declaration](#Variable-Declaration)
   - [Primitive types](#Primitive-types)
   - [User types](#User-types)
-
-- [Input/Output](#Input/Output)
+  - [Type declaration](#Type-declaration)
 - [Comments](#Comments)
-
 - [Expressions](#Expressions)
   - [Arithmetic](#Arithmetic)
   - [Relational](#Relational)
@@ -20,7 +17,7 @@
   - [While loop](#While-loop)
   - [For loop](#For-loop)
 - [Routines](#Routines)
-
+- [Input/Output](#InputOutput)
 
 
 ## Documentation Guide
