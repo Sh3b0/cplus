@@ -5,13 +5,13 @@
 %define api.value.type variant
 %define api.token.constructor
 %define parse.assert
-%define api.parser.class { parser }
+%define api.parser.class { Parser }
 %define api.namespace    { cplus }
 
-%lex-param   { cplus::lexer &lexer }
-%lex-param   { cplus::shell &shell }
-%parse-param { cplus::lexer &lexer }
-%parse-param { cplus::shell &shell }
+%lex-param   { cplus::Lexer &lexer }
+%lex-param   { cplus::Shell &shell }
+%parse-param { cplus::Lexer &lexer }
+%parse-param { cplus::Shell &shell }
 
 %token VAR ID IS INT_VAL REAL_VAL BOOL_VAL    // var <identifier> is \d+ \d+\.\d+ true|false
 %token TYPE_KW INT_KW REAL_KW BOOL_KW         // type integer real boolean
@@ -66,8 +66,8 @@
     #include "ast.hpp"
 
     namespace cplus {
-    class lexer;
-    class shell;
+    class Lexer;
+    class Shell;
     }
 }
 
@@ -79,7 +79,7 @@
     #define GREEN   "\033[32m"
     #define PDEBUG(X) if (shell.debug) std::cout << GREEN << "(" << X << ") " << RESET;
 
-    static cplus::parser::symbol_type yylex(cplus::lexer &lexer, cplus::shell &shell) {
+    static cplus::Parser::symbol_type yylex(cplus::Lexer &lexer, cplus::Shell &shell) {
         return lexer.get_next_token();
     }
     
@@ -383,6 +383,6 @@ EXPRESSIONS :
 ;
 
 %%
-void cplus::parser::error(const std::string& msg) {
+void cplus::Parser::error(const std::string& msg) {
     std::cerr << msg << '\n';
 }

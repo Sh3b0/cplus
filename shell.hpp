@@ -7,12 +7,12 @@
 #include "parser.hpp"
 
 namespace cplus {
-class shell {
+class Shell {
 public:
-    shell();
+    Shell();
 
-    friend class parser;
-    friend class lexer;
+    friend class Parser;
+    friend class Lexer;
 
     bool debug = false;
     std::ifstream infile;
@@ -25,8 +25,8 @@ public:
     void show_help();
     
 private:
-    lexer l;
-    parser p;
+    Lexer l;
+    Parser p;
 };
 } //namespace cplus
 

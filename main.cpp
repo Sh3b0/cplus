@@ -11,7 +11,7 @@
 #define CYAN    "\033[36m"
 #define RESET   "\033[0m"
 
-extern cplus::shell shell;
+extern cplus::Shell shell;
 extern ast::np<ast::Program> program;
 
 int main(int argc, char **argv) {

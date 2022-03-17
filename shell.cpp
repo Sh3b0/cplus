@@ -1,21 +1,21 @@
 #include "shell.hpp"
 
 extern ast::np<ast::Program> program;
-cplus::shell shell;
+cplus::Shell shell;
 
 namespace cplus {
 
-shell::shell() : l(*this), p(l, *this) {}
+Shell::Shell() : l(*this), p(l, *this) {}
 
-int shell::parse_program() {
+int Shell::parse_program() {
     return p.parse();
 }
 
-void shell::readFrom(std::istream *is) {
+void Shell::readFrom(std::istream *is) {
     l.switch_streams(is, nullptr);
 }
 
-void shell::show_help() {
+void Shell::show_help() {
     std::cout << "usage: cplus [options] infile\n";
     std::cout << "\tinfile\t\t\tpath to the source code file (*.cp) to compile.\n\n";
     std::cout << "options:\n";
@@ -25,7 +25,7 @@ void shell::show_help() {
     std::exit(1);
 }
 
-int shell::parse_args(int argc, char **argv) {
+int Shell::parse_args(int argc, char **argv) {
     for (int i = 1; i < argc; i++) {
         std::string arg = argv[i];
         if (arg == "--help" || arg == "-h") {

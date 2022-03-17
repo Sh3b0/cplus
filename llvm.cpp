@@ -29,7 +29,7 @@
         std::cout << "</" << X << ">" << RESET << std::endl; \
     }
 
-extern cplus::shell shell;
+extern cplus::Shell shell;
 
 // Constructor
 IRGenerator::IRGenerator() {
@@ -114,6 +114,7 @@ void IRGenerator::visit(ast::Program *program) {
     std::reverse(program->variables.begin(), program->variables.end());
 
     for (auto& u : program->variables) {
+
         u->accept(this);
     }
     
