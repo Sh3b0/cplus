@@ -25,8 +25,8 @@ public:
     void show_help();
     
 private:
-    Lexer l;
-    Parser p;
+    Lexer lexer;
+    Parser parser;
 };
 } //namespace cplus
 

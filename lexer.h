@@ -19,7 +19,7 @@ namespace cplus {
     
     class Lexer : public yyFlexLexer {
     public:
-        Lexer(Shell& shell) : driver(shell) { }
+        Lexer(Shell& shell) : driver(shell) {}
         virtual ~Lexer() {}
         virtual cplus::Parser::symbol_type get_next_token();
         

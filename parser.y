@@ -132,10 +132,7 @@ EXPRESSION :
     INT_VAL                           { $$ = std::make_shared<ast::IntLiteral>($1); }
     | REAL_VAL                        { $$ = std::make_shared<ast::RealLiteral>($1); }
     | BOOL_VAL                        { $$ = std::make_shared<ast::BoolLiteral>($1); }
-    | ROUTINE_CALL                    {
-        PDEBUG("ROUTINE_CALL_EXP")
-        $$ = $1;    
-    }
+    | ROUTINE_CALL                    { PDEBUG("ROUTINE_CALL_EXP") $$ = $1; }
     | B_L EXPRESSION B_R              { $$ = $2; }
     | NOT EXPRESSION                  { $$ = std::make_shared<ast::UnaryExpression>(ast::OperatorEnum::NOT, $2); }
     | MINUS EXPRESSION                { $$ = std::make_shared<ast::UnaryExpression>(ast::OperatorEnum::MINUS, $2); }
@@ -173,16 +170,18 @@ PRIMITIVE_TYPE :
     | BOOL_KW { $$ = std::make_shared<ast::BoolType>(); }
 ;
 
-ARRAY_TYPE : ARRAY SB_L EXPRESSION SB_R TYPE {
-    PDEBUG("ARRAY_TYPE")
-    $$ = std::make_shared<ast::ArrayType>($3, $5);
-}
+ARRAY_TYPE :
+    ARRAY SB_L EXPRESSION SB_R TYPE {
+        PDEBUG("ARRAY_TYPE")
+        $$ = std::make_shared<ast::ArrayType>($3, $5);
+    }
 ;
 
-RECORD_TYPE : RECORD CB_L VARIABLE_DECLARATIONS CB_R END {
-    PDEBUG("RECORD_TYPE")
-    $$ = std::make_shared<ast::RecordType>($3);
-}
+RECORD_TYPE :
+    RECORD CB_L VARIABLE_DECLARATIONS CB_R END {
+        PDEBUG("RECORD_TYPE")
+        $$ = std::make_shared<ast::RecordType>($3);
+    }
 ;
 
 VARIABLE_DECLARATIONS :

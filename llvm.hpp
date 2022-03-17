@@ -54,10 +54,8 @@ private:
     
     llvm::Value *tmp_v, *tmp_p;
     llvm::Type *tmp_t;
-
     llvm::IntegerType *int_t, *bool_t;
     llvm::Type *real_t;
-
     llvm::Constant *fmt_lld, *fmt_lld_ln, *fmt_f, *fmt_f_ln, *fmt_s, *fmt_s_ln;
 
     int spaces = 0;

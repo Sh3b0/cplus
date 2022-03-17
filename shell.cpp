@@ -5,14 +5,14 @@ cplus::Shell shell;
 
 namespace cplus {
 
-Shell::Shell() : l(*this), p(l, *this) {}
+Shell::Shell() : lexer(*this), parser(lexer, *this) {}
 
 int Shell::parse_program() {
-    return p.parse();
+    return parser.parse();
 }
 
 void Shell::readFrom(std::istream *is) {
-    l.switch_streams(is, nullptr);
+    lexer.switch_streams(is, nullptr);
 }
 
 void Shell::show_help() {
@@ -40,8 +40,7 @@ int Shell::parse_args(int argc, char **argv) {
         }
         else {
             infile.open(arg);
-            if (!infile.good())
-            {
+            if (!infile.good()) {
                 std::cout << "Error: no such file: " << arg << '\n';
                 return 1;
             }
