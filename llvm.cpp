@@ -148,7 +148,7 @@ void IRGenerator::visit(ast::VariableDeclaration *var) {
 
         // dtype is a record
         else if (var->dtype->getType() == ast::TypeEnum::RECORD) {
-            // downcasting np<Type> --> np<RecordType>
+            // downcasting node_ptr<Type> --> node_ptr<RecordType>
             auto t = std::dynamic_pointer_cast<ast::RecordType>(var->dtype);
             t->name = var->name;
             t->accept(this);  // record fields will be created by this visit with "{var->name}." prefix.

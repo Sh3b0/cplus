@@ -12,7 +12,7 @@
 #define RESET   "\033[0m"
 
 extern cplus::Shell shell;
-extern ast::np<ast::Program> program;
+extern ast::node_ptr<ast::Program> program;
 
 int main(int argc, char **argv) {
         

@@ -1,6 +1,6 @@
 #include "shell.hpp"
 
-extern ast::np<ast::Program> program;
+extern ast::node_ptr<ast::Program> program;
 cplus::Shell shell;
 
 namespace cplus {

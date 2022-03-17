@@ -29,23 +29,23 @@
 %type <double> REAL_VAL
 %type <bool> BOOL_VAL
 
-%type <ast::np<ast::VariableDeclaration>> VARIABLE_DECLARATION PARAMETER_DECLARATION
-%type <std::vector<ast::np<ast::VariableDeclaration>>> VARIABLE_DECLARATIONS
-%type <std::vector<ast::np<ast::VariableDeclaration>>> PARAMETERS NON_EMPTY_PARAMETERS 
-%type <ast::np<ast::RoutineDeclaration>> ROUTINE_DECLARATION
-%type <ast::np<ast::Expression>> EXPRESSION
-%type <std::vector<ast::np<ast::Expression>>> EXPRESSIONS NON_EMPTY_EXPRESSIONS
-%type <ast::np<ast::Type>> TYPE PRIMITIVE_TYPE ARRAY_TYPE RECORD_TYPE
-%type <ast::np<ast::Body>> BODY
-%type <ast::np<ast::Identifier>> MODIFIABLE_PRIMARY
-%type <ast::np<ast::Statement>> STATEMENT
-%type <ast::np<ast::ReturnStatement>> RETURN_STATEMENT
-%type <ast::np<ast::PrintStatement>> PRINT_STATEMENT
-%type <ast::np<ast::AssignmentStatement>> ASSIGNMENT_STATEMENT
-%type <ast::np<ast::IfStatement>> IF_STATEMENT
-%type <ast::np<ast::WhileLoop>> WHILE_LOOP
-%type <ast::np<ast::ForLoop>> FOR_LOOP
-%type <ast::np<ast::RoutineCall>> ROUTINE_CALL
+%type <ast::node_ptr<ast::VariableDeclaration>> VARIABLE_DECLARATION PARAMETER_DECLARATION
+%type <std::vector<ast::node_ptr<ast::VariableDeclaration>>> VARIABLE_DECLARATIONS
+%type <std::vector<ast::node_ptr<ast::VariableDeclaration>>> PARAMETERS NON_EMPTY_PARAMETERS 
+%type <ast::node_ptr<ast::RoutineDeclaration>> ROUTINE_DECLARATION
+%type <ast::node_ptr<ast::Expression>> EXPRESSION
+%type <std::vector<ast::node_ptr<ast::Expression>>> EXPRESSIONS NON_EMPTY_EXPRESSIONS
+%type <ast::node_ptr<ast::Type>> TYPE PRIMITIVE_TYPE ARRAY_TYPE RECORD_TYPE
+%type <ast::node_ptr<ast::Body>> BODY
+%type <ast::node_ptr<ast::Identifier>> MODIFIABLE_PRIMARY
+%type <ast::node_ptr<ast::Statement>> STATEMENT
+%type <ast::node_ptr<ast::ReturnStatement>> RETURN_STATEMENT
+%type <ast::node_ptr<ast::PrintStatement>> PRINT_STATEMENT
+%type <ast::node_ptr<ast::AssignmentStatement>> ASSIGNMENT_STATEMENT
+%type <ast::node_ptr<ast::IfStatement>> IF_STATEMENT
+%type <ast::node_ptr<ast::WhileLoop>> WHILE_LOOP
+%type <ast::node_ptr<ast::ForLoop>> FOR_LOOP
+%type <ast::node_ptr<ast::RoutineCall>> ROUTINE_CALL
 
 %left COMMA
 %right BECOMES
@@ -83,7 +83,7 @@
         return lexer.get_next_token();
     }
     
-    ast::np<ast::Program> program = std::make_shared<ast::Program>();  // Points to the whole program node.
+    ast::node_ptr<ast::Program> program = std::make_shared<ast::Program>();  // Points to the whole program node.
 }
 
 
@@ -187,7 +187,7 @@ RECORD_TYPE : RECORD CB_L VARIABLE_DECLARATIONS CB_R END {
 
 VARIABLE_DECLARATIONS :
     VARIABLE_DECLARATION {
-        $$ = std::vector<ast::np<ast::VariableDeclaration>>(1, $1);
+        $$ = std::vector<ast::node_ptr<ast::VariableDeclaration>>(1, $1);
     }
     | VARIABLE_DECLARATION VARIABLE_DECLARATIONS {
         $2.push_back($1);
@@ -211,7 +211,7 @@ ROUTINE_DECLARATION :
 
 NON_EMPTY_PARAMETERS :
     PARAMETER_DECLARATION {
-        $$ = std::vector<ast::np<ast::VariableDeclaration>>(1, $1);
+        $$ = std::vector<ast::node_ptr<ast::VariableDeclaration>>(1, $1);
     }
     | PARAMETER_DECLARATION COMMA NON_EMPTY_PARAMETERS {
         $3.push_back($1);
@@ -221,7 +221,7 @@ NON_EMPTY_PARAMETERS :
 
 PARAMETERS :
     %empty {
-        $$ = std::vector<ast::np<ast::VariableDeclaration>>();
+        $$ = std::vector<ast::node_ptr<ast::VariableDeclaration>>();
     }
     | NON_EMPTY_PARAMETERS {
         $$ = $1;
@@ -237,8 +237,8 @@ PARAMETER_DECLARATION :
 
 BODY :
     %empty {
-        std::vector<ast::np<ast::VariableDeclaration>> tmp1;
-        std::vector<ast::np<ast::Statement>> tmp2;
+        std::vector<ast::node_ptr<ast::VariableDeclaration>> tmp1;
+        std::vector<ast::node_ptr<ast::Statement>> tmp2;
         $$ = std::make_shared<ast::Body>(tmp1, tmp2);
     }
     | VARIABLE_DECLARATION BODY {
@@ -352,7 +352,7 @@ FOR_LOOP :
 
 ROUTINE_CALL :
     ID B_L EXPRESSIONS B_R {
-        ast::np<ast::RoutineCall> call;
+        ast::node_ptr<ast::RoutineCall> call;
         for(auto u : program->routines) {
             if(u->name == $1) {
                 $$ = std::make_shared<ast::RoutineCall>(u, $3);
@@ -364,7 +364,7 @@ ROUTINE_CALL :
 
 NON_EMPTY_EXPRESSIONS :
     EXPRESSION {
-        $$ = std::vector<ast::np<ast::Expression>>(1, $1);
+        $$ = std::vector<ast::node_ptr<ast::Expression>>(1, $1);
     }
     | EXPRESSION COMMA NON_EMPTY_EXPRESSIONS {
         $3.push_back($1);
@@ -375,7 +375,7 @@ NON_EMPTY_EXPRESSIONS :
 
 EXPRESSIONS :
     %empty {
-        $$ = std::vector<ast::np<ast::Expression>>();
+        $$ = std::vector<ast::node_ptr<ast::Expression>>();
     }
     | NON_EMPTY_EXPRESSIONS {
         $$ = $1;

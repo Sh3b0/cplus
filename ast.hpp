@@ -66,7 +66,7 @@ public:
 namespace ast {
 
 // Pointer to an AST node.
-template <typename T> using np = std::shared_ptr<T>;
+template <typename Node> using node_ptr = std::shared_ptr<Node>;
 
 // Enumerations
 enum class TypeEnum { INT, REAL, BOOL, ARRAY, RECORD };
@@ -79,16 +79,16 @@ struct Node {
 
 // A special node containing program variables, type aliases, and routines.
 struct Program : Node {
-    std::vector<np<VariableDeclaration>> variables;
-    std::map<std::string, np<Type>> types;
-    std::vector<np<RoutineDeclaration>> routines;
+    std::vector<node_ptr<VariableDeclaration>> variables;
+    std::map<std::string, node_ptr<Type>> types;
+    std::vector<node_ptr<RoutineDeclaration>> routines;
     
     void accept(Visitor *v) override { v->visit(this); }
 };
 
 // Base class for Expressions
 struct Expression : Node {
-    np<Type> dtype;
+    node_ptr<Type> dtype;
 };
 
 // Base class for Types
@@ -125,10 +125,10 @@ struct BoolType : Type {
 };
 
 struct ArrayType : Type {
-    np<Expression> size;
-    np<Type> dtype;
+    node_ptr<Expression> size;
+    node_ptr<Type> dtype;
     
-    ArrayType(np<Expression> size, np<Type>dtype) {
+    ArrayType(node_ptr<Expression> size, node_ptr<Type>dtype) {
         this->size = size;
         this->dtype = dtype;
     }
@@ -140,9 +140,9 @@ struct ArrayType : Type {
 
 struct RecordType : Type {
     std::string name; // set by llvm vardecl or typedecl
-    std::vector<np<VariableDeclaration>> fields;
+    std::vector<node_ptr<VariableDeclaration>> fields;
     
-    RecordType(std::vector<np<VariableDeclaration>> fields) {
+    RecordType(std::vector<node_ptr<VariableDeclaration>> fields) {
         this->fields = fields;
     }
 
@@ -154,10 +154,10 @@ struct RecordType : Type {
 // </Types>
 // <Expressions>
 struct UnaryExpression : Expression {
-    np<Expression> operand;
+    node_ptr<Expression> operand;
     OperatorEnum op;
 
-    UnaryExpression(OperatorEnum op, np<Expression> operand) {
+    UnaryExpression(OperatorEnum op, node_ptr<Expression> operand) {
         this->operand = operand;
         this->op = op;
     }
@@ -166,10 +166,10 @@ struct UnaryExpression : Expression {
 };
 
 struct BinaryExpression : Expression {
-    np<Expression> lhs, rhs;
+    node_ptr<Expression> lhs, rhs;
     OperatorEnum op;
 
-    BinaryExpression(np<Expression> lhs, OperatorEnum op, np<Expression> rhs) {
+    BinaryExpression(node_ptr<Expression> lhs, OperatorEnum op, node_ptr<Expression> rhs) {
         this->lhs = lhs;
         this->rhs = rhs;
         this->op = op;
@@ -213,7 +213,7 @@ struct BoolLiteral : Expression {
 
 struct Identifier : Expression {
     std::string name;
-    np<Expression> idx;
+    node_ptr<Expression> idx;
     
     // variable or record field access
     Identifier(std::string name) {
@@ -221,7 +221,7 @@ struct Identifier : Expression {
     }
     
     // array element access
-    Identifier(std::string name, np<Expression> idx) {
+    Identifier(std::string name, node_ptr<Expression> idx) {
         this->name = name;
         this->idx = idx;
     }
@@ -233,22 +233,22 @@ struct Identifier : Expression {
 // <Nodes>
 struct VariableDeclaration : Node {
     std::string name;
-    np<Type> dtype;
-    np<Expression> initial_value;
+    node_ptr<Type> dtype;
+    node_ptr<Expression> initial_value;
 
-    VariableDeclaration(std::string name, np<Type> dtype) {
+    VariableDeclaration(std::string name, node_ptr<Type> dtype) {
         this->name = name;
         this->dtype = dtype;
         this->initial_value = nullptr;
     }
 
-    VariableDeclaration(std::string name, np<Expression> initial_value) {
+    VariableDeclaration(std::string name, node_ptr<Expression> initial_value) {
         this->name = name;
         this->dtype = initial_value->dtype;
         this->initial_value = initial_value;
     }
 
-    VariableDeclaration(std::string name, np<Type> dtype, np<Expression> initial_value) {
+    VariableDeclaration(std::string name, node_ptr<Type> dtype, node_ptr<Expression> initial_value) {
         this->name = name;
         this->dtype = dtype;
         this->initial_value = initial_value;
@@ -258,11 +258,11 @@ struct VariableDeclaration : Node {
 };
 
 struct Body : Node {
-    std::vector<np<Statement>> statements;
-    std::vector<np<VariableDeclaration>> variables;
-    // std::vector<np<TypeDeclaration>> types;
+    std::vector<node_ptr<Statement>> statements;
+    std::vector<node_ptr<VariableDeclaration>> variables;
+    // std::vector<node_ptr<TypeDeclaration>> types;
     
-    Body(std::vector<np<VariableDeclaration>> variables, std::vector<np<Statement>> statements) {
+    Body(std::vector<node_ptr<VariableDeclaration>> variables, std::vector<node_ptr<Statement>> statements) {
         this->variables = variables;
         this->statements = statements;
     }
@@ -272,18 +272,18 @@ struct Body : Node {
 
 struct RoutineDeclaration : Node {
     std::string name;
-    std::vector<np<VariableDeclaration>> params;
-    np<Type> rtype;
-    np<Body> body;
+    std::vector<node_ptr<VariableDeclaration>> params;
+    node_ptr<Type> rtype;
+    node_ptr<Body> body;
     
-    RoutineDeclaration(std::string name, std::vector<np<VariableDeclaration>> params, np<Body> body, np<Type> rtype) {
+    RoutineDeclaration(std::string name, std::vector<node_ptr<VariableDeclaration>> params, node_ptr<Body> body, node_ptr<Type> rtype) {
         this->name = name;
         this->params = params;
         this->rtype = rtype;
         this->body = body;
     }
     
-    RoutineDeclaration(std::string name, std::vector<np<VariableDeclaration>> params, np<Body> body) {
+    RoutineDeclaration(std::string name, std::vector<node_ptr<VariableDeclaration>> params, node_ptr<Body> body) {
         this->name = name;
         this->params = params;
         this->body = body;
@@ -295,11 +295,11 @@ struct RoutineDeclaration : Node {
 // </Nodes>
 // <Statements>
 struct ReturnStatement : Statement {
-    np<Expression> exp;
+    node_ptr<Expression> exp;
     
     ReturnStatement() {}
 
-    ReturnStatement(np<Expression> exp) {
+    ReturnStatement(node_ptr<Expression> exp) {
         this->exp = exp;
     }
 
@@ -307,16 +307,16 @@ struct ReturnStatement : Statement {
 };
 
 struct PrintStatement : Statement {
-    np<Expression> exp;
-    np<std::string> str;
+    node_ptr<Expression> exp;
+    node_ptr<std::string> str;
     bool endl;
 
-    PrintStatement(np<Expression> exp, bool endl=false) {
+    PrintStatement(node_ptr<Expression> exp, bool endl=false) {
         this->exp = exp;
         this->endl = endl;
     }
 
-    PrintStatement(np<std::string> str, bool endl=false) {
+    PrintStatement(node_ptr<std::string> str, bool endl=false) {
         this->str = str;
         this->endl = endl;
     }
@@ -325,10 +325,10 @@ struct PrintStatement : Statement {
 };
 
 struct AssignmentStatement : Statement {
-    np<Identifier> id;
-    np<Expression> exp;
+    node_ptr<Identifier> id;
+    node_ptr<Expression> exp;
 
-    AssignmentStatement(np<Identifier> id, np<Expression> exp) {
+    AssignmentStatement(node_ptr<Identifier> id, node_ptr<Expression> exp) {
         this->id = id;
         this->exp = exp;
     }
@@ -337,15 +337,15 @@ struct AssignmentStatement : Statement {
 };
 
 struct IfStatement : Statement {
-    np<Expression> cond;
-    np<Body> then_body, else_body;
+    node_ptr<Expression> cond;
+    node_ptr<Body> then_body, else_body;
 
-    IfStatement(np<Expression> cond, np<Body> then_body) {
+    IfStatement(node_ptr<Expression> cond, node_ptr<Body> then_body) {
         this->cond = cond;
         this->then_body = then_body;
     }
 
-    IfStatement(np<Expression> cond, np<Body> then_body, np<Body> else_body) {
+    IfStatement(node_ptr<Expression> cond, node_ptr<Body> then_body, node_ptr<Body> else_body) {
         this->cond = cond;
         this->then_body = then_body;
         this->else_body = else_body;
@@ -355,10 +355,10 @@ struct IfStatement : Statement {
 };
 
 struct WhileLoop : Statement {
-    np<Expression> cond;
-    np<Body> body;
+    node_ptr<Expression> cond;
+    node_ptr<Body> body;
 
-    WhileLoop(np<Expression> cond, np<Body> body) {
+    WhileLoop(node_ptr<Expression> cond, node_ptr<Body> body) {
         this->cond = cond;
         this->body = body;
     }
@@ -367,12 +367,12 @@ struct WhileLoop : Statement {
 };
 
 struct ForLoop : Statement {
-    np<VariableDeclaration> loop_var;
-    np<Expression> cond;
-    np<Body> body;
-    np<AssignmentStatement> action;
+    node_ptr<VariableDeclaration> loop_var;
+    node_ptr<Expression> cond;
+    node_ptr<Body> body;
+    node_ptr<AssignmentStatement> action;
 
-    ForLoop(np<VariableDeclaration> loop_var, np<Expression> cond, np<Body> body, np<AssignmentStatement> action) {
+    ForLoop(node_ptr<VariableDeclaration> loop_var, node_ptr<Expression> cond, node_ptr<Body> body, node_ptr<AssignmentStatement> action) {
         this->loop_var = loop_var;
         this->cond = cond;
         this->body = body;
@@ -383,10 +383,10 @@ struct ForLoop : Statement {
 };
 
 struct RoutineCall : Statement, Expression {
-    np<RoutineDeclaration> routine;
-    std::vector<np<Expression>> args;
+    node_ptr<RoutineDeclaration> routine;
+    std::vector<node_ptr<Expression>> args;
 
-    RoutineCall(np<RoutineDeclaration> routine, std::vector<np<Expression>> args) {
+    RoutineCall(node_ptr<RoutineDeclaration> routine, std::vector<node_ptr<Expression>> args) {
         this->routine = routine;
         this->args = args;
     }
