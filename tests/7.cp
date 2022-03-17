@@ -1,35 +1,22 @@
-var number : integer;
-var originalNumber : integer;
-var isArmstrong is false;
-var remainder : integer;
-var result is 0;
-
-routine findArmstrongNumber(original : integer, num : integer, rem : integer, res : integer) : boolean is
-    
-    while num /= 0 loop
-        rem := num % 10;
-        res := res + rem * rem * rem;
-        num := num / 10;
+routine leapYear(year : integer) : boolean is
+    if year % 4 = 0 then
+        if year % 100 = 0 then
+            if year % 400 = 0 then
+                return true;
+            else
+                return false;
+            end
+        else
+            return true;
+        end
     end
-
-    if res = original then
-        return true;
-    end
-    
     return false;
-
 end
 
-
 routine main() is
-	number := 153;
-	originalNumber := number;
-	isArmstrong := findArmstrongNumber(number, originalNumber, remainder, result);
-	if isArmstrong then
-	    println "Yep";
-	else
-	    println "Nope";
-	end
-	return;
+    var year : integer is 2000;
+    var isLeap : boolean is leapYear(year);
+    println isLeap;
+    return;
 end
 

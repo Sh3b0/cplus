@@ -78,9 +78,10 @@ llvm::Type *IRGenerator::pop_t() {
 }
 
 // handles primitive casting for AssignmentStatement and VariableDeclaration
-llvm::Value* IRGenerator::cast_primitive(llvm::Value* value, llvm::Type* explicit_type, llvm::Type* implicit_type) {
-    if(explicit_type == implicit_type)
+llvm::Value *IRGenerator::cast_primitive(llvm::Value *value, llvm::Type *explicit_type, llvm::Type *implicit_type) {
+    if(explicit_type == implicit_type) {
         return value;
+    }
     if(explicit_type == int_t && implicit_type == real_t) { // real -> int
         return builder->CreateFPToSI(value, explicit_type, "intcast");
     }
@@ -176,7 +177,6 @@ void IRGenerator::visit(ast::VariableDeclaration *var) {
 
     // dtype is not given, deduce dtype from initial value
     else {
-        // deduce:
         var->initial_value->accept(this);
         initial_value = pop_v();
         dtype = pop_t();
@@ -303,22 +303,22 @@ void IRGenerator::visit(ast::UnaryExpression *exp) {
     BLOCK_B("UnaryExpression")
     
     exp->operand->accept(this);
-    llvm::Value *O = pop_v();
+    llvm::Value *operand = pop_v();
 
     switch (exp->op) {
         case ast::OperatorEnum::MINUS:
-            if(O->getType()->isFloatingPointTy()) {
-                tmp_v = builder->CreateFNeg(O, "negtmp");
+            if(operand->getType()->isFloatingPointTy()) {
+                tmp_v = builder->CreateFNeg(operand, "negtmp");
                 tmp_t = real_t;
             }
             else {
-                tmp_v = builder->CreateNeg(O, "negtmp");
+                tmp_v = builder->CreateNeg(operand, "negtmp");
                 tmp_t = int_t;
             }
             break;
 
         case ast::OperatorEnum::NOT:
-            tmp_v = builder->CreateNot(O, "nottmp");
+            tmp_v = builder->CreateNot(operand, "nottmp");
             tmp_t = bool_t;
             break;
     }

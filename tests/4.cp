@@ -1,30 +1,49 @@
-var a is 5;
-var b : integer;
-var c : integer is 2;
+var x : integer is 0;
+var y : real is 3.4;
 
-type int is integer;
-type bool is boolean;
-
-
-routine power(number : int, to_power : int) : int is
-	var tmp is 1;
-	
-	if to_power < 1 then
-		return 1;
-	end
-
-	for i in 0 .. to_power - 1 loop
-		tmp := tmp * number;
-	end
-    
-	return tmp;
+routine isFive (x : integer) : boolean is
+    return x = 5;
 end
 
-routine main(input : integer) : int is 
-	b := power(c, a);
-	a := power(b, c);
-	var d is power(c, 2) * power(c, 3);
-	println d;
-	return 0;
+type bool is boolean;
+
+routine isSix (z : integer) : bool is
+    if z = 6 then
+        return true;
+    end
+    return false;
+end
+
+
+routine main() is 
+    if x then
+        x := 5.3;
+    else
+        if y > 5 then
+            x := true;
+        end
+    end
+
+    if x then
+        x := 5.3;
+    else
+        y := 10;
+    end
+
+    var z is 5 + x * y / (4 = 4);
+
+    var a : array[10] bool;
+    a[10] := 0;
+    a[9] := true;
+    a[8] := 9.8 /= 50;
+    
+    println x;
+    println y;
+    println z;
+    println isSix(x);
+    println isFive(x);
+    println a[8];
+    
+    return;
 end
 

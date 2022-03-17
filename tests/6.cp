@@ -1,18 +1,17 @@
-var number : integer;
+routine getNumberOfFactors(x: integer) : integer is
+    var k is 0;
 
-var reversedNumber is 0;
+    for i in 1 .. x loop
+        if x % i = 0 then
+           k := k + 1;
+	    end
+    end
 
-var remainder : integer;
+   return k;
+end
 
-routine main(inp : integer) is
-	number := 1828329;
-
-	while number /= 0 loop
-		remainder := number % 10;
-		reversedNumber := reversedNumber * 10 + remainder;
-		number := number / 10;
-	    println number;
-	end
-	
+routine main() is
+	var factorsNumber : integer is getNumberOfFactors(10);
+	println factorsNumber;
 	return;
 end
