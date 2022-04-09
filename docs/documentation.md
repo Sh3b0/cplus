@@ -38,6 +38,7 @@ The following rules are used in sections presenting language syntax:
 - **integer**: supports integer numbers (8 bytes signed integers)
 - **real**: supports real values (4 bytes)
 - **boolean**: can only be true or false (1 byte)
+- **string**: supports raw text
 
 ### User types
 
@@ -83,10 +84,12 @@ The following rules are used in sections presenting language syntax:
 var a : integer is 20;
 var b : boolean is false;
 var c : real is 1.5;
-var d : integer; # will not be initialized unless global
+var d : string is "Hello AC+";
+var e : integer; # will not be initialized unless global
 var x is 5;      # x becomes integer automatically
 var y is true;   # y becomes boolean automatically
 var z is 0.5;    # z becomes real automatically
+var w is "HI!";   # w becomes string automatically
 ```
 
 ### Type Declaration:
@@ -139,7 +142,7 @@ var x : integer; # This is also a comment
 ### Arithmetic:
 **Operators:**
 
-- **+**: Addition
+- **+**: Addition (With strings the strings get concatinated together)
 - **-**: Subtraction
 - *****: Multiplication
 - **/**: Division
@@ -149,6 +152,7 @@ var x : integer; # This is also a comment
 
 ```python
 var x is 5 + 5;  # 10
+var y is "a" + "b"; #"ab"
 ```
 ### Relational:
 **Operators:** 
