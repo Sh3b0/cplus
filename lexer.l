@@ -26,7 +26,7 @@ alphanum   [a-zA-Z_0-9\.]
     LDEBUG(" ")
 }
 
-[\n]+ {
+[\r\n]+ {
     LDEBUG("\n")
 }
 

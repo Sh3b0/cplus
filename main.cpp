@@ -38,7 +38,7 @@ int main(int argc, char **argv) {
     program->accept(&gen);
     gen.generate();
 
-    std::string cmd = "clang -x ir ir.ll -o " + shell.outfile;
+    std::string cmd = "clang -x ir ir.ll -o \"" + shell.outfile + "\"";
     
     if(!system(cmd.c_str())) {
         std::cout << "\033[0m" << "Compilation successful. Run ./" << shell.outfile << " to execute\n";

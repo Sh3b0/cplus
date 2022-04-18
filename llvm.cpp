@@ -43,9 +43,6 @@ IRGenerator::IRGenerator() {
 
 // Emits IR code as "ir.ll"
 void IRGenerator::generate() {
-    auto CPU = "generic";
-    auto Features = "";
-
     module->setTargetTriple(llvm::sys::getDefaultTargetTriple());
 
     std::string msg;
@@ -559,7 +556,7 @@ void IRGenerator::visit(ast::RoutineDeclaration *routine) {
     args_table.clear();
     idx = 0;
     for (auto& arg : to_call->args()) {
-        args_table[arg.getName()] = &arg;
+        args_table[arg.getName().str()] = &arg;
     }
 
     // Create globals needed for PrintStatement
