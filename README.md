@@ -74,7 +74,7 @@ Compiler for **C+** toy imperative language, based on [LLVM](https://llvm.org/do
 2. Clone repo
 
    ```bash
-   git clone https://github.com/Sh3B0/cplus/
+   git clone https://github.com/Sh1co/cplus/
    cd cplus
    ```
 
