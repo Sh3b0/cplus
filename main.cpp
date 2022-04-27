@@ -3,6 +3,7 @@
 #include "lexer.h"
 #include "parser.hpp"
 #include "shell.hpp"
+#include "type_checker.hpp"
 #include "llvm.hpp"
 
 #define RED     "\033[31m"
@@ -33,6 +34,9 @@ int main(int argc, char **argv) {
     if(shell.debug) {
         std::cout << CYAN << "[AST]:" << RESET << std::endl;
     }
+    
+    ast::TypeChecker type_checker;
+    program->accept(&type_checker);
 
     IRGenerator gen;
     program->accept(&gen);

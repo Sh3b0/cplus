@@ -1,23 +1,15 @@
-#ifndef LLVM_H
-#define LLVM_H
-
-#include <llvm/IR/Module.h>
-#include <llvm/IR/IRBuilder.h>
-#include <llvm/IR/LLVMContext.h>
-#include <llvm/IR/Verifier.h>
-#include "llvm/Support/FileSystem.h"
-#include "llvm/Support/TargetRegistry.h"
-#include "llvm/Support/TargetSelect.h"
-#include "llvm/Target/TargetMachine.h"
-#include "llvm/Target/TargetOptions.h"
+#ifndef TYPE_CHECKER_H
+#define TYPE_CHECKER_H
 
 #include "ast.hpp"
 #include "shell.hpp"
 
-// Visits AST nodes and generates LLVM IR code.
-class IRGenerator : public Visitor {
+namespace ast {
+
+// Visits AST nodes and checks types.
+class TypeChecker : public Visitor {
 public:
-    IRGenerator();
+    TypeChecker();
     void generate();
     void visit(ast::Program *program) override;
     void visit(ast::EmptyType *it) override;
@@ -44,30 +36,18 @@ public:
     void visit(ast::ForLoop *stmt) override;
     void visit(ast::RoutineCall *stmt) override;
 
-    llvm::Value *exp_to_bool(llvm::Value *cond);
-    llvm::Value *cast_primitive(llvm::Value*, llvm::Type*, llvm::Type*);
-
 private:
-    llvm::LLVMContext context;
-    std::unique_ptr<llvm::IRBuilder<>> builder;
-    std::unique_ptr<llvm::Module> module;
-    std::map<std::string, llvm::Value*> ptrs_table;
-    std::map<std::string, llvm::Value*> args_table;
-    
-    llvm::Value *tmp_v, *tmp_p;
-    llvm::Type *tmp_t;
-    llvm::IntegerType *int_t, *bool_t;
-    llvm::Type *real_t;
-    llvm::Constant *fmt_lld, *fmt_lld_ln, *fmt_f, *fmt_f_ln, *fmt_s, *fmt_s_ln;
+	node_ptr<Type> type_;
+	std::vector<std::pair<std::string, node_ptr<Type>>> context_expr;
+	std::vector<node_ptr<Type>> context_return;
+	std::vector<std::string> record_stack;
 
+	bool type_equal(node_ptr<Type> type1, node_ptr<Type> type2);
+	int find_in_context_expr(std::string name);
+	std::string build_variable_name();
+	
     int spaces = 0;
-    bool global_vars_pass = true;
-    bool signature_pass = false;
-    bool is_first_routine = true;
-
-    llvm::Value *pop_v();
-    llvm::Value *pop_p();
-    llvm::Type *pop_t();
 };
+} // namespace ast
 
-#endif // LLVM_H
+#endif // TYPE_CHECKER_H

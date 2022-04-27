@@ -19,7 +19,7 @@
 %token COLON SEMICOLON COMMA DDOT BECOMES     // : ; , . .. :=
 %token PLUS MINUS MUL DIV MOD                 // + - * / %
 %token AND OR XOR NOT                         // and or xor not
-%token LT GT EQ LEQ GEQ NEQ                   // < > = <= >= /=
+%token LT GT EQ LEQ GEQ NEQ ARROW             // < > = <= >= /= ->
 %token ARRAY RECORD ROUTINE RETURN END        // array record routine return end
 %token PRINT PRINTLN STRING                   // print println <string>
 %token IF THEN ELSE WHILE FOR IN LOOP REVERSE // if then else while for in loop reverse
@@ -35,7 +35,7 @@
 %type <ast::node_ptr<ast::RoutineDeclaration>> ROUTINE_DECLARATION
 %type <ast::node_ptr<ast::Expression>> EXPRESSION
 %type <std::vector<ast::node_ptr<ast::Expression>>> EXPRESSIONS NON_EMPTY_EXPRESSIONS
-%type <ast::node_ptr<ast::Type>> TYPE PRIMITIVE_TYPE ARRAY_TYPE RECORD_TYPE
+%type <ast::node_ptr<ast::Type>> TYPE PRIMITIVE_TYPE ARRAY_TYPE RECORD_TYPE FUNCTION_TYPE
 %type <ast::node_ptr<ast::Body>> BODY
 %type <ast::node_ptr<ast::Identifier>> MODIFIABLE_PRIMARY
 %type <ast::node_ptr<ast::Statement>> STATEMENT
@@ -53,6 +53,7 @@
 %left AND
 %left EQ NEQ XOR
 %left LT LEQ GT GEQ
+%right ARROW
 %left PLUS MINUS
 %left MUL DIV MOD
 %right NOT
@@ -158,6 +159,8 @@ TYPE :
     PRIMITIVE_TYPE
     | ARRAY_TYPE
     | RECORD_TYPE
+    | FUNCTION_TYPE
+    | CB_L TYPE CB_R { $$ = $2; }
     | ID {
         PDEBUG("ALIASED_TYPE_ACCESS")
         $$ = program->types[$1];
@@ -192,6 +195,13 @@ VARIABLE_DECLARATIONS :
         $2.push_back($1);
         $$ = $2;
     }
+;
+
+FUNCTION_TYPE :
+	TYPE ARROW TYPE {
+		PDEBUG("FUNCTION_TYPE")
+		$$ = std::make_shared<ast::FunctionType>($1, $3);
+	}
 ;
 
 ROUTINE_DECLARATION :

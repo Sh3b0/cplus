@@ -16,9 +16,9 @@ FLEX_TARGET(MyScanner lexer.l  ${CMAKE_BINARY_DIR}/lexer.cpp)
 BISON_TARGET(MyParser parser.y ${CMAKE_BINARY_DIR}/parser.cpp)
 ADD_FLEX_BISON_DEPENDENCY(MyScanner MyParser)
 
-set(HEADERS "shell.hpp" "lexer.h" "ast.hpp" "llvm.hpp")
+set(HEADERS "shell.hpp" "lexer.h" "ast.hpp" "type_checker.hpp" "llvm.hpp")
 
-set(SOURCES "main.cpp" "shell.cpp" "llvm.cpp")
+set(SOURCES "main.cpp" "shell.cpp" "type_checker.cpp" "llvm.cpp")
 
 add_executable(cplus ${HEADERS} ${SOURCES} ${BISON_MyParser_OUTPUTS} ${FLEX_MyScanner_OUTPUTS})
 
