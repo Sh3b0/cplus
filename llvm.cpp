@@ -440,6 +440,10 @@ void IRGenerator::visit(ast::BinaryExpression *exp) {
     BLOCK_E("BinaryExpression")
 }
 
+void IRGenerator::visit(ast::EmptyType *it) {
+
+}
+
 void IRGenerator::visit(ast::IntType *it) {
     tmp_t = int_t;
 }
@@ -494,6 +498,14 @@ void IRGenerator::visit(ast::RecordType *rt) {
     }
 
     BLOCK_E("RecordType")
+}
+
+void IRGenerator::visit(ast::FunctionType *ft) {
+	BLOCK_B("FucntionType")
+	
+	GERROR("Function Types are not supported");
+	
+	BLOCK_E("FunctionType")
 }
 
 void IRGenerator::visit(ast::IntLiteral *il) {

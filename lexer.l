@@ -265,6 +265,11 @@ alphanum   [a-zA-Z_0-9\.]
     return cplus::Parser::make_NEQ();
 }
 
+"->" {
+	LDEBUG("ARROW")
+	return cplus::Parser::make_ARROW();
+}
+
 true {
     LDEBUG("BOOL_VAL")
     return cplus::Parser::make_BOOL_VAL(true);

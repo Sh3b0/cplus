@@ -15,11 +15,13 @@ struct Expression;
 struct UnaryExpression;
 struct BinaryExpression;
 struct Identifier;
+struct EmptyType;
 struct IntType;
 struct RealType;
 struct BoolType;
 struct ArrayType;
 struct RecordType;
+struct FunctionType;
 struct IntLiteral;
 struct RealLiteral;
 struct BoolLiteral;
@@ -40,11 +42,13 @@ struct RoutineCall;
 class Visitor {
 public:
     virtual void visit(ast::Program *program) = 0;
+    virtual void visit(ast::EmptyType *it) = 0;
     virtual void visit(ast::IntType *it) = 0;
     virtual void visit(ast::RealType *it) = 0;
     virtual void visit(ast::BoolType *it) = 0;
     virtual void visit(ast::ArrayType *at) = 0;
     virtual void visit(ast::RecordType *rt) = 0;
+    virtual void visit(ast::FunctionType *ft) = 0;
     virtual void visit(ast::IntLiteral *il) = 0;
     virtual void visit(ast::RealLiteral *rl) = 0;
     virtual void visit(ast::BoolLiteral *bl) = 0;
@@ -69,7 +73,7 @@ namespace ast {
 template <typename Node> using node_ptr = std::shared_ptr<Node>;
 
 // Enumerations
-enum class TypeEnum { INT, REAL, BOOL, ARRAY, RECORD };
+enum class TypeEnum { EMPTY, INT, REAL, BOOL, ARRAY, RECORD, FUNCTION };
 enum class OperatorEnum { PLUS, MINUS, MUL, DIV, MOD, AND, OR, NOT, XOR, EQ, NEQ, LT, GT, LEQ, GEQ }; 
 
 // Base class for AST nodes
@@ -103,6 +107,13 @@ struct Statement : virtual Node {
 };
 
 // <Types>
+struct EmptyType : Type {
+    EmptyType() {}
+    TypeEnum getType() { return TypeEnum::EMPTY; }
+
+    void accept(Visitor *v) override { v->visit(this); }
+};
+
 struct IntType : Type {
     IntType() {}
     TypeEnum getType() { return TypeEnum::INT; }
@@ -149,6 +160,19 @@ struct RecordType : Type {
     TypeEnum getType() { return TypeEnum::RECORD; }
 
     void accept(Visitor *v) override { v->visit(this); }
+};
+
+struct FunctionType : Type {
+	node_ptr<Type> from, to;
+	
+	FunctionType(node_ptr<Type> from, node_ptr<Type> to) {
+		this->from = from;
+		this->to = to;
+	}
+	
+	TypeEnum getType() { return TypeEnum::FUNCTION; }
+	
+	void accept(Visitor *v) override { v->visit(this); }
 };
 
 // </Types>
