@@ -61,7 +61,6 @@ The following rules are used in sections presenting language syntax:
 - **real**
 - **boolean**
 - **record** **{** *Variable declarations separated by a semicolon* **}** **end**
-
 - **array** <ins>Type</ins>
 - **array** **[** <ins>Expression</ins> **]** <ins>Type</ins>
   - *Expression should be reducible to an integer representing array size*
@@ -139,11 +138,11 @@ var x : integer; # This is also a comment
 ### Arithmetic:
 **Operators:**
 
-- **+**: Addition
-- **-**: Subtraction
-- *****: Multiplication
-- **/**: Division
-- **%**: Modulo
+- **+**
+- **-**
+- <b>*</b>
+- **/**
+- **%**
 
 **Example:**
 
@@ -153,12 +152,12 @@ var x is 5 + 5;  # 10
 ### Relational:
 **Operators:** 
 
-- **<**: Less than
-- **<=**: Less than or equal
-- **>**: Greater than
-- **>=**: Greater than or equal 
-- **=**: Equals
-- **/=**: Not equal
+- **<**
+- **<=**
+- **>**
+- **>=**
+- **=**
+- **/=**
 
 **Examples:**
 
@@ -385,7 +384,7 @@ end
 **Output**
 
 ```
-Hello!
+Hello C+
 94.539750
 ```
 
