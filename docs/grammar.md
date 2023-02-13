@@ -2,7 +2,7 @@
 
 ## Guide
 
-- `rule : defintion` defines grammar a production rule.
+- `rule : defintion` defines a grammar production rule.
 - `{ rule }` matches zero or more production rules.
 - `[ rule ]` matches zero or one production rules
 - `( var1 | var2 )` matches exactly one of the variants (there can by one or more options)
@@ -79,7 +79,7 @@ Statement :
 ```haskell
 Assignment : ModifiablePrimary ":=" Expression ";"
 WhileLoop : "while" Expression "loop" Body "end"
-ForLoop : "for" Identifier "in" [ "reverse" ] Range "loop" Body "end"
+ForLoop : "for" Identifier "in" [ "reverse" ] Expression ".." Expression "loop" Body "end"
 IfStatement : "if" Expression "then" Body [ "else" Body ] "end"
 ReturnStatement : "return" [ Expression ] ";"
 PrintStatement : ( "print" | "println" ) ( Expression | String ) ";"
